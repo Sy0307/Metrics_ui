@@ -319,38 +319,10 @@ const DashboardLayout = ({
             padding: 24,
             minHeight: 280,
             background: darkMode ? '#141414' : '#fff',
-            overflowX: 'hidden'
+            // overflowX: 'hidden' // Removed for clarity, can be re-added if specific layout issues arise
           }}
         >
-          {timeSeriesData.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <Spin size="large" />
-              <div style={{ marginTop: 20 }}>
-                <Statistic value="数据加载中..." />
-              </div>
-            </div>
-          ) : (
-            <PanelGrid 
-              panels={panels}
-              layout={layout}
-              timeSeriesData={timeSeriesData}
-              currentData={currentData}
-              pieData={pieData}
-              isLoading={isLoading}
-              darkMode={darkMode}
-              onLayoutChange={onLayoutChange}
-              setPanelRefreshRate={(panelId, rate) => {
-                setPanels(panels.map(panel => 
-                  panel.id === panelId ? { ...panel, refreshRate: rate } : panel
-                ));
-              }}
-              onShowAlertSettings={showAlertSettings}
-              onRemovePanel={removePanel}
-              onClonePanel={clonePanel}
-            />
-          )}
-          {/* Step 4: Render children in Content */}
-          {children}
+          {children} 
         </Content>
         <Footer
           style={{

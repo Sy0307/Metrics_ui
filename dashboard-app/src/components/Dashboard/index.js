@@ -550,7 +550,7 @@ const Dashboard = () => {
         )}
         {currentView === 'settings' && <SettingsPage />}
         {currentView === 'data_sources' && <DataSourcesPage />}
-        {currentView === 'agricultural_reports' && <AgriculturalReportsPage />}
+        {currentView === 'agricultural_reports' && <AgriculturalReportsPage timeSeriesData={timeSeriesData} currentData={currentData} />}
         {currentView === 'farm_tasks' && <FarmTasksPage />}
         {currentView === 'alerts_center' && <AlertsCenterPage />}
       </DashboardLayout>

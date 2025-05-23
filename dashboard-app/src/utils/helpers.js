@@ -1,6 +1,7 @@
+// [WORKER_TOOL_NOTE] This is the ENTIRE desired content for dashboard-app/src/utils/helpers.js
 import React from 'react';
 import { notification } from 'antd';
-import { WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { WarningOutlined, CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { dataSources, agriculturalAlertConditions } from './constants';
 
 // ========== 数据生成相关函数 ==========
@@ -13,27 +14,221 @@ export const getRandomValue = (min, max, decimal = 0) => {
 
 // 生成随机波动值（基于前一个值）
 export const getFluctuatedValue = (prevValue, maxFluctuation, min, max, decimal = 0) => {
-    // 生成波动幅度
     const fluctuation = (Math.random() * 2 - 1) * maxFluctuation;
-    // 计算新值并确保在合理范围内
     let newValue = prevValue + fluctuation;
     newValue = Math.max(min, Math.min(max, newValue));
-    // 格式化小数
-    return decimal > 0 ? Number(newValue.toFixed(decimal)) : Math.floor(newValue);
+    return decimal > 0 ? Number(newValue.toFixed(decimal)) : Math.floor(value);
 };
 
 // 生成时间标签
 export const generateTimeLabels = (count = 12) => {
     const now = new Date();
     const labels = [];
-
     for (let i = count - 1; i >= 0; i--) {
-        const time = new Date(now.getTime() - i * 60 * 1000);
+        const time = new Date(now.getTime() - i * 60 * 1000); // Simulate data for every minute
         labels.push(time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }));
     }
-
     return labels;
 };
+
+
+// Module-level static variables for generateMockData
+let simHourGlobal = Math.floor(Math.random() * 24);
+let simDayGlobal = 0;
+let ndviStageGlobal = 0; // 0: initial, 1: rapid, 2: plateau, 3: decline
+let currentNdviGlobal = 0.1;
+let currentSoilTempGlobal = 18 + getRandomValue(-2, 2, 1);
+let lastIrrigationHourGlobal = -72; // So it can water soon after start
+
+export const generateMockData = (timeSeriesData, customDataSources = null) => {
+    const timeLabels = generateTimeLabels(12);
+    const baseLoadFactor = getTimeBasedLoadFactor(); // For system data
+
+    const isInitialGeneration = timeSeriesData.length === 0;
+    const pointsToGenerate = isInitialGeneration ? 12 : 1; // Generate 12 points initially, then 1 per update
+    
+    let newTimeSeriesData = isInitialGeneration ? [] : [...timeSeriesData];
+    
+    let prevData = newTimeSeriesData.length > 0 ? newTimeSeriesData[newTimeSeriesData.length - 1] : {
+        // System data defaults
+        cpu: 50, memory: 50, network: 50, disk: 50, user: 50, load: 5, requests: 150, response_time: 250, errors: 1, queue: 5,
+        // Agri data defaults, using global static vars for continuity
+        soil_moisture: 60, 
+        ndvi_index: currentNdviGlobal,
+        air_temp: 18 + getRandomValue(-2, 2, 1), 
+        air_humidity: 65, 
+        light_intensity: (simHourGlobal >= 6 && simHourGlobal <= 18) ? getRandomValue(10000, 50000) : getRandomValue(0,200),
+        crop_health_map: 0,
+        soil_temp: currentSoilTempGlobal,
+    };
+
+    for (let i = 0; i < pointsToGenerate; i++) {
+        simHourGlobal++; // Increment global simulation hour
+        if (simHourGlobal > 0 && simHourGlobal % 24 === 0) { // Ensure simHourGlobal has incremented before checking modulo
+            simDayGlobal++; // Increment global simulation day every 24 simulation hours
+        }
+        const currentHourOfDay = simHourGlobal % 24;
+
+        // 1. Air Temperature (Diurnal Cycle)
+        const baseAirT = 18; 
+        const amplitudeAirT = 8; 
+        let newAirTemp = baseAirT + amplitudeAirT * Math.sin((currentHourOfDay - 8) * (Math.PI / 12)); // Peak at 2 PM (14:00)
+        newAirTemp += getRandomValue(-1, 1, 1); 
+        newAirTemp = parseFloat(newAirTemp.toFixed(1));
+        newAirTemp = Math.max(5, Math.min(40, newAirTemp));
+
+        // 2. Light Intensity (Diurnal Cycle)
+        const maxLux = 70000;
+        let newLightIntensity = 0;
+        if (currentHourOfDay >= 6 && currentHourOfDay <= 18) { 
+            newLightIntensity = maxLux * Math.sin((currentHourOfDay - 6) * (Math.PI / 12)); 
+            newLightIntensity += getRandomValue(-5000, 5000);
+            newLightIntensity = Math.max(0, Math.round(newLightIntensity));
+        } else {
+            newLightIntensity = getRandomValue(0, 200); 
+        }
+        
+        currentSoilTempGlobal = parseFloat((newAirTemp * 0.2 + currentSoilTempGlobal * 0.8 + getRandomValue(-0.3, 0.3, 1)).toFixed(1));
+        currentSoilTempGlobal = Math.max(5, Math.min(35, currentSoilTempGlobal));
+
+        // 3. Soil Moisture (Evaporation & Irrigation)
+        let newSoilMoisture = prevData.soil_moisture;
+        if (simHourGlobal - lastIrrigationHourGlobal >= 72 && currentHourOfDay === 5) { 
+            newSoilMoisture = getRandomValue(80, 90, 1);
+            lastIrrigationHourGlobal = simHourGlobal;
+        } else {
+            const evaporationRate = (newLightIntensity / maxLux) * 0.4 + (Math.max(0, newAirTemp - 15) / 25) * 0.3;
+            newSoilMoisture -= (getRandomValue(0.2, 0.4, 1) + evaporationRate);
+        }
+        newSoilMoisture = parseFloat(Math.max(15, Math.min(95, newSoilMoisture)).toFixed(1));
+        
+        // 4. NDVI (Growth Curve)
+        if (simDayGlobal < 30) { 
+            if(ndviStageGlobal !== 0) currentNdviGlobal = 0.1;
+            ndviStageGlobal = 0; // Initial
+            currentNdviGlobal += getRandomValue(0.002, 0.004, 3);
+        } else if (simDayGlobal < 90) { 
+            if(ndviStageGlobal === 0) currentNdviGlobal = Math.max(currentNdviGlobal, 0.2);
+            ndviStageGlobal = 1; // Rapid growth
+            currentNdviGlobal += getRandomValue(0.007, 0.012, 3);
+        } else if (simDayGlobal < 150) { 
+             if(ndviStageGlobal === 1) currentNdviGlobal = Math.max(currentNdviGlobal, 0.75);
+            ndviStageGlobal = 2; // Plateau
+            currentNdviGlobal += getRandomValue(-0.002, 0.002, 3);
+        } else { 
+            if(ndviStageGlobal === 2) currentNdviGlobal = Math.max(currentNdviGlobal, 0.5);
+            ndviStageGlobal = 3; // Decline
+            currentNdviGlobal -= getRandomValue(0.003, 0.007, 3);
+            if (simDayGlobal >= 200) { 
+                 simDayGlobal = 0; currentNdviGlobal = 0.1; ndviStageGlobal = 0; // Reset cycle
+            }
+        }
+        currentNdviGlobal = parseFloat(Math.max(0.05, Math.min(0.92, currentNdviGlobal)).toFixed(2));
+
+        // 5. Crop Health Map
+        let newCropHealth = prevData.crop_health_map; 
+        const randFactor = Math.random();
+        if (currentNdviGlobal < 0.25 || newSoilMoisture < 20) { 
+            newCropHealth = (randFactor < 0.5) ? 2 : 1; 
+        } else if (currentNdviGlobal < 0.4 || newSoilMoisture < 35) { 
+            newCropHealth = (randFactor < 0.2) ? 2 : (randFactor < 0.6) ? 1 : 0;
+        } else { 
+            newCropHealth = (randFactor < 0.1) ? 1 : 0; 
+        }
+
+        // 6. Air Humidity
+        const baseAirHumidity = 60;
+        const humidityTempInfluence = (baseAirT - newAirTemp) * 1.5; 
+        let newAirHumidity = baseAirHumidity + humidityTempInfluence + getRandomValue(-5, 5, 1);
+        newAirHumidity = parseFloat(Math.max(30, Math.min(98, newAirHumidity)).toFixed(1));
+
+        const cpu = getFluctuatedValue(prevData.cpu, 5, 10, 90, 1);
+        const memory = getFluctuatedValue(prevData.memory, 5, 20, 80, 1);
+        const network = getFluctuatedValue(prevData.network, 10, 5, 100, 1);
+        const disk = getFluctuatedValue(prevData.disk, 2, 30, 90, 1);
+        const user = Math.round(getFluctuatedValue(prevData.user, 10, 20, 150));
+        const load = parseFloat(getFluctuatedValue(prevData.load, 0.5, 0.1, 10, 2).toFixed(2));
+        const requests = Math.round(getFluctuatedValue(prevData.requests, 20, 50, 300));
+        const response_time = Math.round(getFluctuatedValue(prevData.response_time, 30, 50, 500));
+        const errors = parseFloat(Math.max(0, getFluctuatedValue(prevData.errors, 0.5, 0, 5, 1)).toFixed(1));
+        const queue = Math.round(Math.max(0, getFluctuatedValue(prevData.queue, 3, 0, 20)));
+
+        const dataPoint = {
+            time: isInitialGeneration ? timeLabels[i] : timeLabels[timeLabels.length -1],
+            cpu, memory, network, disk, user, load, requests, response_time, errors, queue,
+            air_temp: newAirTemp,
+            light_intensity: newLightIntensity,
+            soil_moisture: newSoilMoisture,
+            ndvi_index: currentNdviGlobal,
+            crop_health_map: newCropHealth,
+            air_humidity: newAirHumidity,
+            soil_temp: currentSoilTempGlobal,
+        };
+
+        if (isInitialGeneration) {
+            newTimeSeriesData.push(dataPoint);
+        } else {
+            newTimeSeriesData = [...newTimeSeriesData.slice(1), dataPoint];
+        }
+        prevData = dataPoint; 
+    }
+    
+    if (customDataSources && customDataSources.length > 0) {
+        const lastGeneratedPoint = newTimeSeriesData[newTimeSeriesData.length -1];
+        // For correlation, use values from the last generated point
+        const {cpu: cpuValue, memory: memoryValue, requests: requestsValue, response_time: responseTimeValue} = lastGeneratedPoint; 
+
+        customDataSources.forEach(source => {
+            if (!lastGeneratedPoint[source.key]) { 
+                if (source.category === '系统') {
+                    if (source.unit === '%') {
+                        const baseValue = getCorrelatedValue((cpuValue + memoryValue) / 2, 0.5, baseLoadFactor * 50, 20 );
+                        lastGeneratedPoint[source.key] = parseFloat(baseValue.toFixed(1));
+                    } else if (source.unit === 'MB' || source.unit === 'GB') {
+                        const baseValue = getCorrelatedValue(memoryValue, 0.6, 1000, 200);
+                        lastGeneratedPoint[source.key] = Math.round(baseValue);
+                    } else {
+                        lastGeneratedPoint[source.key] = getRandomValue(10, 90, 1);
+                    }
+                } else if (source.category === '应用') {
+                    if (source.key.includes('count') || source.key.includes('total')) {
+                        const baseValue = getCorrelatedValue(requestsValue,0.7,baseLoadFactor * 5000,1000);
+                        lastGeneratedPoint[source.key] = Math.round(baseValue);
+                    } else if (source.unit === 'ms') {
+                        const baseValue = getCorrelatedValue(responseTimeValue, 0.6, responseTimeValue * 0.8, 50);
+                        lastGeneratedPoint[source.key] = Math.round(baseValue);
+                    } else if (source.unit === '%') {
+                        lastGeneratedPoint[source.key] = getRandomValue(5, 95, 1);
+                    } else {
+                        lastGeneratedPoint[source.key] = getRandomValue(1, 100, 0);
+                    }
+                } else if (source.category === '业务') {
+                    if (source.key.includes('revenue') || source.key.includes('sales')) {
+                        const dailyFactor = baseLoadFactor * 0.5 + 0.5; 
+                        lastGeneratedPoint[source.key] = Math.round(10000 * dailyFactor + getRandomValue(-2000, 2000, 0));
+                    } else if (source.unit === '%') {
+                        lastGeneratedPoint[source.key] = getRandomValue(1, 30, 1);
+                    } else {
+                        lastGeneratedPoint[source.key] = getRandomValue(100, 10000, 0);
+                    }
+                } else { // Default for other categories or if no specific logic
+                    lastGeneratedPoint[source.key] = getRandomValue(1, 100, (source.unit === '%' || source.unit === '°C') ? 1 : 0);
+                }
+            }
+        });
+    }
+
+    const newPieData = [
+        { type: '数据库', value: getRandomValue(20, 40) },
+        { type: '应用服务', value: getRandomValue(20, 35) },
+        { type: '缓存', value: getRandomValue(10, 25) },
+        { type: '前端', value: getRandomValue(5, 15) },
+        { type: '其他', value: getRandomValue(1, 10) },
+    ];
+
+    return { newTimeSeriesData, newPieData };
+};
+
 
 export const getChartConfigByType = (type, dataKey, timeSeriesData, currentData, pieData) => {
     // 创建数据源特定的配置
@@ -109,767 +304,149 @@ export const getChartConfigByType = (type, dataKey, timeSeriesData, currentData,
                     yField: 'value',
                     meta: { value: { alias: '队列长度' } }
                 };
-            case 'all':
-                return {
+            case 'all': // Example for multi-line chart showing system overview
+                 return {
                     data: timeSeriesData.flatMap(item => ([
                         { time: item.time, value: item.cpu, category: 'CPU' },
                         { time: item.time, value: item.memory, category: '内存' },
-                        { time: item.time, value: item.network, category: '网络' }
+                        // Add other relevant system metrics if desired
                     ])),
                     xField: 'time',
                     yField: 'value',
-                    seriesField: 'category',
-                    yAxis: {
-                        title: {
-                            text: '使用率 (%)',
-                        },
-                    },
-                    legend: {
-                        position: 'top',
-                    },
-                    smooth: true,
-                    animation: {
-                        appear: {
-                            animation: 'path-in',
-                            duration: 1000,
-                        },
-                    },
-                };
-            case 'resource':
+                    seriesField: 'category', // Key for differentiating lines
+                    // ... other multi-line chart configs
+                 };
+            case 'resource': // Example for pie chart
                 return {
-                    data: pieData,
+                    data: pieData, // pieData should be structured as [{type: 'db', value: 20}, ...]
                     angleField: 'value',
                     colorField: 'type',
-                    radius: 0.8,
-                    label: {
-                        type: 'spider',
-                        labelHeight: 28,
-                        content: '{name}\n{percentage}',
-                    },
-                    interactions: [{ type: 'element-active' }],
+                    // ... other pie chart configs
                 };
+            // Add cases for new agricultural data keys if they need specific configurations
+            case 'soil_moisture':
+                return {
+                    data: timeSeriesData.map(item => ({ time: item.time, value: item.soil_moisture })),
+                    xField: 'time',
+                    yField: 'value',
+                    meta: { value: { alias: '土壤湿度 (%)' } }
+                };
+            case 'ndvi_index':
+                return {
+                    data: timeSeriesData.map(item => ({ time: item.time, value: item.ndvi_index })),
+                    xField: 'time',
+                    yField: 'value',
+                    meta: { value: { alias: 'NDVI植被指数' } }
+                };
+            case 'air_temp':
+                return {
+                    data: timeSeriesData.map(item => ({ time: item.time, value: item.air_temp })),
+                    xField: 'time',
+                    yField: 'value',
+                    meta: { value: { alias: '空气温度 (°C)' } }
+                };
+             case 'air_humidity':
+                return {
+                    data: timeSeriesData.map(item => ({ time: item.time, value: item.air_humidity})),
+                    xField: 'time',
+                    yField: 'value',
+                    meta: { value: { alias: '空气湿度 (%)' } }
+                };
+            case 'light_intensity':
+                return {
+                    data: timeSeriesData.map(item => ({ time: item.time, value: item.light_intensity})),
+                    xField: 'time',
+                    yField: 'value',
+                    meta: { value: { alias: '光照强度 (lux)' } }
+                };
+            case 'soil_temp':
+                return {
+                    data: timeSeriesData.map(item => ({ time: item.time, value: item.soil_temp})),
+                    xField: 'time',
+                    yField: 'value',
+                    meta: { value: { alias: '土壤温度 (°C)' } }
+                };
+            // crop_health_map might not be directly plottable as a simple series
+            // It might be used to color-code map markers or display status text,
+            // so it might not need a config here, or a very different one.
             default:
-                // 检查是否是自定义数据源
+                // Fallback for any other dataKey, including custom ones
                 if (timeSeriesData.length > 0 && timeSeriesData[0][dataKey] !== undefined) {
+                    const dataSourceInfo = dataSources.find(ds => ds.key === dataKey);
+                    const alias = dataSourceInfo ? `${dataSourceInfo.name} ${dataSourceInfo.unit ? `(${dataSourceInfo.unit})` : ''}` : `${dataKey} 值`;
                     return {
                         data: timeSeriesData.map(item => ({ time: item.time, value: item[dataKey] })),
                         xField: 'time',
                         yField: 'value',
-                        meta: { value: { alias: `${dataKey} 值` } }
+                        meta: { value: { alias } }
                     };
                 }
-
-                // 默认配置
-                return chartType === 'pie' ? {
-                    data: pieData,
-                    angleField: 'value',
-                    colorField: 'type',
-                    radius: 0.8,
-                    label: {
-                        type: 'spider',
-                        labelHeight: 28,
-                        content: '{name}\n{percentage}',
-                    },
-                    interactions: [{ type: 'element-active' }],
-                } : {
-                    data: timeSeriesData.map(item => ({ time: item.time, value: item[dataKey] || 0 })),
+                return { // Default empty config if dataKey not found
+                    data: [],
                     xField: 'time',
                     yField: 'value'
                 };
         }
     };
 
-    // 各类型图表的基础配置
-    const gaugeConfig = {
-        percent: (currentData[dataKey] || 0) / 100,
-        range: {
-            color: 'l(0) 0:#6495ED 0.5:#87CEFA 1:#1890FF',
-        },
-        indicator: {
-            pointer: {
-                style: {
-                    stroke: '#D0D0D0',
-                },
-            },
-            pin: {
-                style: {
-                    stroke: '#D0D0D0',
-                },
-            },
-        },
-        statistic: {
-            title: {
-                formatter: () => dataKey.toUpperCase(),
-                style: ({
-                    fontSize: '16px',
-                    lineHeight: 1,
-                }),
-            },
-            content: {
-                formatter: () => `${currentData[dataKey] || 0}%`,
-                style: ({
-                    fontSize: '24px',
-                    lineHeight: 1,
-                }),
-            },
-        },
+    // Base configurations for chart types, can be extended or customized
+    const commonLineAreaConfig = {
+        smooth: true,
+        animation: { appear: { animation: 'path-in', duration: 1000 } },
+        interactions: [{ type: 'tooltip' }, { type: 'legend-filter' }],
+        xAxis: { title: { text: '时间' }},
     };
-
-    const radarConfig = {
-        data: [
-            { name: 'CPU', value: currentData.cpu || 0 },
-            { name: '内存', value: currentData.memory || 0 },
-            { name: '磁盘', value: currentData.disk || 0 },
-            { name: '网络', value: currentData.network || 0 },
-            { name: '请求数', value: (currentData.requests || 0) / 5 },
-            { name: '响应时间', value: (currentData.response_time || 0) / 10 },
-        ],
-        xField: 'name',
-        yField: 'value',
-        meta: {
-            value: {
-                min: 0,
-                max: 100,
-            },
-        },
-        area: {},
-        point: {},
-        legend: false,
-    };
-
-    const ringConfig = {
-        percent: (currentData[dataKey] || 0) / 100,
-        statistic: {
-            title: {
-                style: {
-                    fontSize: '16px',
-                    lineHeight: 1,
-                },
-                formatter: () => {
-                    const dataSource = dataSources.find(ds => ds.key === dataKey);
-                    return dataSource ? dataSource.name : dataKey;
-                },
-            },
-            content: {
-                style: {
-                    fontSize: '24px',
-                    lineHeight: 1,
-                },
-                formatter: ({ percent }) => `${(percent * 100).toFixed(1)}%`,
-            },
-        },
-    };
-
-    const funnelConfig = {
-        data: [
-            { stage: '总请求', value: currentData.requests || 0 },
-            { stage: '处理中', value: (currentData.requests || 0) * 0.8 },
-            { stage: '已完成', value: (currentData.requests || 0) * 0.6 },
-            { stage: '成功', value: (currentData.requests || 0) * 0.5 },
-        ],
-        xField: 'stage',
-        yField: 'value',
-        legend: false,
-    };
-
-    // 热力图数据
-    const heatmapData = [];
-    for (let i = 0; i < 24; i++) {
-        for (let j = 0; j < 7; j++) {
-            heatmapData.push({
-                hour: String(i).padStart(2, '0') + ':00',
-                day: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][j],
-                value: Math.floor(Math.random() * 90 + 10), // 随机值，范围10-100
-            });
+    
+    const commonGaugeConfig = (dataKey, currentData) => {
+        const ds = dataSources.find(d => d.key === dataKey) || {};
+        const unit = ds.unit || '';
+        const name = ds.name || dataKey;
+        let percentValue = currentData[dataKey];
+        // If unit is '%', divide by 100 for gauge's 0-1 scale. Otherwise, determine scale.
+        // This needs careful handling based on expected data ranges for non-% gauges.
+        // For simplicity, if not %, assume it's on a scale where max is e.g. 50 for temp, 100 for humidity if not already %.
+        if (unit === '%') {
+            percentValue = (currentData[dataKey] || 0) / 100;
+        } else if (dataKey === 'air_temp' || dataKey === 'soil_temp') { // Example: temp scale 0-50
+            percentValue = (currentData[dataKey] || 0) / 50;
+        } else { // Default to 0-100 scale if not % and no specific handling
+             percentValue = (currentData[dataKey] || 0) / 100;
         }
-    }
+        percentValue = Math.max(0, Math.min(1, percentValue)); // Clamp to 0-1
 
-    const heatmapConfig = {
-        data: heatmapData,
-        xField: 'hour',
-        yField: 'day',
-        colorField: 'value',
-        color: ['#174c83', '#7eb6d4', '#efefeb', '#efa759', '#9b4d16'],
-        meta: {
-            hour: {
-                type: 'cat',
+        return {
+            percent: percentValue,
+            range: { color: 'l(0) 0:#6495ED 0.5:#87CEFA 1:#1890FF' },
+            indicator: { pointer: { style: { stroke: '#D0D0D0' } }, pin: { style: { stroke: '#D0D0D0' } } },
+            statistic: {
+                title: { 
+                    formatter: () => name, 
+                    style: { fontSize: '16px', lineHeight: 1 } 
+                },
+                content: { 
+                    formatter: () => `${currentData[dataKey] || 0}${unit}`, 
+                    style: { fontSize: '24px', lineHeight: 1 } 
+                },
             },
-            day: {
-                type: 'cat',
-            },
-        },
-    };
-
-    const waterfallConfig = {
-        data: [
-            { type: '上月结余', value: 1000 },
-            { type: '收入', value: 5000 },
-            { type: '支出', value: -2000 },
-            { type: '本月结余', value: 4000 },
-        ],
-        xField: 'type',
-        yField: 'value',
-        color: ({ type }) => {
-            if (type === '总计' || type === '上月结余' || type === '本月结余') {
-                return '#1890ff';
-            }
-            return type.includes('支出') ? '#ff4d4f' : '#73d13d';
-        },
-    };
-
-    // 根据图表类型返回适当的配置
-    switch (type) {
-        case 'gauge':
-            return gaugeConfig;
-        case 'radar':
-            return radarConfig;
-        case 'ring':
-            return ringConfig;
-        case 'funnel':
-            return funnelConfig;
-        case 'heatmap':
-            return heatmapConfig;
-        case 'waterfall':
-            return waterfallConfig;
-        default:
-            return getDataConfig(dataKey, type);
-    }
-};
-
-// 获取基于时间的负载因子
-// 模拟工作时间负载较高，夜间负载较低的常见模式
-export const getTimeBasedLoadFactor = () => {
-    const now = new Date();
-    const hour = now.getHours();
-
-    // 工作时间 (9:00 - 18:00) 负载较高
-    if (hour >= 9 && hour < 18) {
-        return 0.7 + (Math.random() * 0.3); // 70%-100% 基础负载
-    }
-    // 晚间活跃时间 (18:00 - 22:00) 中等负载
-    else if (hour >= 18 && hour < 22) {
-        return 0.4 + (Math.random() * 0.3); // 40%-70% 基础负载
-    }
-    // 深夜/凌晨 (22:00 - 6:00) 低负载
-    else if (hour >= 22 || hour < 6) {
-        return 0.1 + (Math.random() * 0.2); // 10%-30% 基础负载
-    }
-    // 早晨 (6:00 - 9:00) 逐渐增加的负载
-    else {
-        // 计算从6点到9点负载的线性增长
-        const minutesSince6am = (hour - 6) * 60 + now.getMinutes();
-        const loadFactor = 0.2 + (minutesSince6am / 180) * 0.5; // 20% 到 70% 逐渐增加
-        return loadFactor + (Math.random() * 0.1); // 添加一些随机波动
-    }
-};
-
-// 添加突发事件（偶尔会有的流量/负载突增）
-export const addSpikeEvent = (baseValue, maxMultiplier = 3, probability = 0.05) => {
-    // 有一定概率出现突发事件
-    if (Math.random() < probability) {
-        // 突发倍数，比如CPU突然飙升至2-3倍
-        const spikeMultiplier = 1 + Math.random() * (maxMultiplier - 1);
-        return Math.min(baseValue * spikeMultiplier, 100); // 确保不超过100%
-    }
-    return baseValue;
-};
-
-// 指标相关性
-// 例如当CPU上升时，Memory和Load通常也会上升
-export const getCorrelatedValue = (sourceValue, correlation = 0.7, baseValue = 50, maxDeviation = 20) => {
-    // sourceValue 是源指标的值，correlation是相关度(0-1)
-    // baseValue是基础值，maxDeviation是最大偏差
-
-    // 计算相关部分（与源指标相关）
-    const correlatedPart = (sourceValue - 50) * correlation;
-
-    // 计算随机部分（引入一些独立的随机性）
-    const randomPart = (Math.random() * 2 - 1) * maxDeviation * (1 - correlation);
-
-    // 合并得到最终值
-    let finalValue = baseValue + correlatedPart + randomPart;
-
-    // 确保在有效范围内(0-100)
-    finalValue = Math.max(0, Math.min(100, finalValue));
-
-    return finalValue;
-};
-
-// 添加小的趋势变化
-// 模拟系统随时间变化的趋势，如内存缓慢增长直到重启
-export const addTrend = (value, trendFactor, min, max) => {
-    // trendFactor为正表示上升趋势，为负表示下降趋势
-    let newValue = value + trendFactor;
-
-    // 确保在有效范围内
-    newValue = Math.max(min, Math.min(max, newValue));
-
-    return newValue;
-};
-
-// 生成更真实的模拟数据
-export const generateMockData = (timeSeriesData, customDataSources = null) => {
-    // 生成时间标签
-    const timeLabels = generateTimeLabels(12);
-
-    // 系统负载基准因子 (基于时间)
-    const baseLoadFactor = getTimeBasedLoadFactor();
-
-    // 各指标的趋势因子 (模拟长期趋势)
-    const trends = {
-        cpu: 0, // CPU无明显长期趋势
-        memory: 0.2, // 内存有轻微上升趋势(内存泄漏)
-        disk: 0.1, // 磁盘使用率缓慢增长
-        network: 0, // 网络无明显趋势
-        load: 0 // 系统负载无明显趋势
-    };
-
-    // 生成新的时间序列数据或更新现有数据
-    let newTimeSeriesData;
-
-    if (timeSeriesData.length === 0) {
-        // 第一次初始化：生成所有数据点
-        // 首先为核心指标生成基准值
-        const baseCpu = 20 + baseLoadFactor * 30; // 基准CPU使用率
-        const baseMemory = 30 + baseLoadFactor * 20; // 基准内存使用率
-        const baseNetwork = 15 + baseLoadFactor * 40; // 基准网络使用率
-
-        newTimeSeriesData = timeLabels.map((time, index) => {
-            // 为每个时间点添加趋势因子，但使第一个点不受影响
-            const trendMultiplier = index / 10; // 趋势随时间逐渐增强
-
-            // 创建核心指标，使用时间和前面指标的相关性
-            const cpuValue = addSpikeEvent(
-                baseCpu + getRandomValue(-10, 10, 1) + (trends.cpu * trendMultiplier),
-                2.5, 0.03
-            );
-
-            const memoryValue = getCorrelatedValue(
-                cpuValue, 0.3, // 与CPU有30%相关性
-                baseMemory + (trends.memory * trendMultiplier),
-                10
-            );
-
-            const diskValue = 40 + getRandomValue(-3, 3, 1) + (trends.disk * trendMultiplier);
-
-            const networkValue = addSpikeEvent(
-                baseNetwork + getRandomValue(-15, 15, 1) + (trends.network * trendMultiplier),
-                3, 0.05
-            );
-
-            const loadValue = getCorrelatedValue(
-                cpuValue, 0.7, // 与CPU有70%相关性
-                (baseLoadFactor * 5) + (trends.load * trendMultiplier),
-                1
-            ) / 10; // 负载通常在0-10范围内
-
-            // 创建其他指标，部分基于核心指标
-            const userValue = getCorrelatedValue(networkValue, 0.5, baseLoadFactor * 80, 20);
-
-            const requestsValue = getCorrelatedValue(
-                networkValue, 0.8, // 与网络流量高度相关
-                baseLoadFactor * 200,
-                50
-            );
-
-            // 响应时间与CPU和负载相关
-            const cpuLoadFactor = (cpuValue / 100 + loadValue / 5) / 2; // 基于CPU和负载的混合因子
-            const responseTimeValue = 100 + cpuLoadFactor * 400 + getRandomValue(-40, 40, 0);
-
-            // 错误率与CPU和内存有一定相关性
-            const errorBaseFactor = Math.max(0, (cpuValue - 70) / 30 * 3 + (memoryValue - 80) / 20 * 2);
-            const errorsValue = Math.max(0, errorBaseFactor + getRandomValue(-0.5, 0.5, 1));
-
-            // 队列长度与负载和请求数相关
-            const queueValue = Math.max(0,
-                (loadValue - 3) * 5 +
-                (requestsValue - 150) / 30 +
-                getRandomValue(-2, 5, 0)
-            );
-
-            // 创建基础数据点
-            const dataPoint = {
-                time,
-                cpu: parseFloat(cpuValue.toFixed(1)),
-                memory: parseFloat(memoryValue.toFixed(1)),
-                network: parseFloat(networkValue.toFixed(1)),
-                disk: parseFloat(diskValue.toFixed(1)),
-                user: Math.round(userValue),
-                load: parseFloat(loadValue.toFixed(2)),
-                requests: Math.round(requestsValue),
-                response_time: Math.round(responseTimeValue),
-                errors: parseFloat(errorsValue.toFixed(1)),
-                queue: Math.round(queueValue)
-            };
-
-            // 添加自定义数据源的数据
-            if (customDataSources && customDataSources.length > 0) {
-                customDataSources.forEach(source => {
-                    // 确保自定义数据源不会覆盖已有的标准数据
-                    if (!dataPoint[source.key]) {
-                        // 根据数据源的类别为其生成合适的随机值
-                        if (source.category === '系统') {
-                            // 系统指标通常与CPU、内存等相关
-                            if (source.unit === '%') {
-                                // 百分比类指标
-                                const baseValue = getCorrelatedValue(
-                                    (cpuValue + memoryValue) / 2,
-                                    0.5,
-                                    baseLoadFactor * 50,
-                                    20
-                                );
-                                dataPoint[source.key] = parseFloat(baseValue.toFixed(1));
-                            } else if (source.unit === 'MB' || source.unit === 'GB') {
-                                // 容量类指标，与内存使用相关
-                                const baseValue = getCorrelatedValue(
-                                    memoryValue,
-                                    0.6,
-                                    1000, // 基准值1000MB或1GB
-                                    200
-                                );
-                                dataPoint[source.key] = Math.round(baseValue);
-                            } else {
-                                // 其他系统指标
-                                dataPoint[source.key] = getRandomValue(10, 90, 1);
-                            }
-                        } else if (source.category === '应用') {
-                            // 应用指标通常与请求数、响应时间相关
-                            if (source.key.includes('count') || source.key.includes('total')) {
-                                // 计数类指标，与请求数相关
-                                const baseValue = getCorrelatedValue(
-                                    requestsValue,
-                                    0.7,
-                                    baseLoadFactor * 5000,
-                                    1000
-                                );
-                                dataPoint[source.key] = Math.round(baseValue);
-                            } else if (source.unit === 'ms') {
-                                // 时间类指标，与响应时间相关
-                                const baseValue = getCorrelatedValue(
-                                    responseTimeValue,
-                                    0.6,
-                                    responseTimeValue * 0.8,
-                                    50
-                                );
-                                dataPoint[source.key] = Math.round(baseValue);
-                            } else if (source.unit === '%') {
-                                // 百分比类指标
-                                dataPoint[source.key] = getRandomValue(5, 95, 1);
-                            } else {
-                                // 其他应用指标
-                                dataPoint[source.key] = getRandomValue(1, 100, 0);
-                            }
-                        } else if (source.category === '业务') {
-                            // 业务指标通常更加独立，但可能与整体负载有一定关联
-                            if (source.key.includes('revenue') || source.key.includes('sales')) {
-                                // 收入/销售类指标
-                                const dailyFactor = baseLoadFactor * 0.5 + 0.5; // 业务指标受负载影响较小
-                                dataPoint[source.key] = Math.round(10000 * dailyFactor + getRandomValue(-2000, 2000, 0));
-                            } else if (source.unit === '%') {
-                                // 百分比类指标，如转化率
-                                dataPoint[source.key] = getRandomValue(1, 30, 1); // 业务转化率通常较低
-                            } else {
-                                // 其他业务指标
-                                dataPoint[source.key] = getRandomValue(100, 10000, 0);
-                            }
-                        } else {
-                            // 其他类别的默认随机范围
-                            dataPoint[source.key] = getRandomValue(1, 100, 0);
-                        }
-                    }
-                });
-            }
-
-            return dataPoint;
-        });
-    } else {
-        // 更新：移除最旧的数据点，添加新的数据点
-        const latestTime = timeLabels[timeLabels.length - 1];
-
-        // 安全地获取前一个数据点
-        const prevData = timeSeriesData.length > 0
-            ? timeSeriesData[timeSeriesData.length - 1]
-            : {
-                cpu: 50,
-                memory: 50,
-                network: 50,
-                disk: 50,
-                user: 50,
-                load: 5,
-                requests: 150,
-                response_time: 250,
-                errors: 1,
-                queue: 5
-            };
-
-        // 基于前一个值和环境因素生成新的值
-        // CPU波动较大，负载受时间影响明显
-        const newCpuBase = prevData.cpu + trends.cpu + (baseLoadFactor * 5 - 2.5);
-        const newCpuValue = addSpikeEvent(
-            getFluctuatedValue(newCpuBase, 8, 5, 98, 1),
-            2.5, 0.03
-        );
-
-        // 内存增长更稳定，有小趋势变化
-        const newMemoryBase = prevData.memory + trends.memory;
-        const newMemoryValue = getFluctuatedValue(
-            newMemoryBase,
-            2 + (baseLoadFactor * 3), // 高负载时波动略大
-            10, 95, 1
-        );
-
-        // 网络流量波动很大，与时间相关性高
-        const newNetworkBase = prevData.network + (baseLoadFactor * 8 - 4);
-        const newNetworkValue = addSpikeEvent(
-            getFluctuatedValue(newNetworkBase, 15, 5, 100, 1),
-            3, 0.05
-        );
-
-        // 磁盘使用率缓慢增长
-        const newDiskValue = getFluctuatedValue(
-            prevData.disk + trends.disk,
-            1, // 磁盘使用波动很小
-            30, 99, 1
-        );
-
-        // 用户会话数与网络流量和时间相关
-        const newUserValue = getCorrelatedValue(
-            newNetworkValue,
-            0.5,
-            prevData.user,
-            10 + (baseLoadFactor * 10)
-        );
-
-        // 系统负载与CPU高度相关
-        const newLoadValue = getCorrelatedValue(
-            newCpuValue,
-            0.7,
-            prevData.load,
-            0.5 + (baseLoadFactor * 0.5)
-        );
-
-        // 请求数与网络流量和时间高度相关
-        const newRequestsValue = getCorrelatedValue(
-            newNetworkValue,
-            0.8,
-            prevData.requests,
-            30 + (baseLoadFactor * 20)
-        );
-
-        // 响应时间与CPU和负载相关
-        const cpuLoadFactor = (newCpuValue / 100 + newLoadValue / 5) / 2;
-        const newResponseTimeValue = getCorrelatedValue(
-            cpuLoadFactor * 100,
-            0.7,
-            prevData.response_time,
-            20 + (baseLoadFactor * 30)
-        );
-
-        // 错误率与CPU和内存负载有关联，尤其是在高负载时
-        const errorBaseFactor = Math.max(0, (newCpuValue - 70) / 30 * 3 + (newMemoryValue - 80) / 20 * 2);
-        const newErrorsValue = Math.max(0, errorBaseFactor + getRandomValue(-0.5, 0.5, 1));
-
-        // 队列长度与系统负载和请求数相关
-        const newQueueValue = Math.max(
-            0,
-            (newLoadValue - 3) * 5 + (newRequestsValue - prevData.requests) / 30 + getRandomValue(-2, 5, 0)
-        );
-
-        // 基于前一个值添加合理的波动
-        const newDataPoint = {
-            time: latestTime,
-            cpu: parseFloat(newCpuValue.toFixed(1)),
-            memory: parseFloat(newMemoryValue.toFixed(1)),
-            network: parseFloat(newNetworkValue.toFixed(1)),
-            disk: parseFloat(newDiskValue.toFixed(1)),
-            user: Math.round(newUserValue),
-            load: parseFloat(newLoadValue.toFixed(2)),
-            requests: Math.round(newRequestsValue),
-            response_time: Math.round(newResponseTimeValue),
-            errors: parseFloat(newErrorsValue.toFixed(1)),
-            queue: Math.round(newQueueValue)
         };
+    };
 
-        // 添加自定义数据源的数据，并基于前一个值添加合理波动
-        if (customDataSources && customDataSources.length > 0) {
-            customDataSources.forEach(source => {
-                if (prevData[source.key] !== undefined) {
-                    // 如果有前一个值，基于它生成波动
-                    if (source.category === '系统') {
-                        if (source.unit === '%') {
-                            // 系统百分比类指标，与CPU/内存相关
-                            const baseValue = getCorrelatedValue(
-                                (newCpuValue + newMemoryValue) / 2,
-                                0.4,
-                                prevData[source.key],
-                                5
-                            );
-                            newDataPoint[source.key] = parseFloat(baseValue.toFixed(1));
-                        } else if (source.unit === 'MB' || source.unit === 'GB') {
-                            // 容量类指标
-                            const baseValue = getCorrelatedValue(
-                                newMemoryValue,
-                                0.5,
-                                prevData[source.key],
-                                50
-                            );
-                            newDataPoint[source.key] = Math.round(baseValue);
-                        } else {
-                            // 其他系统指标
-                            newDataPoint[source.key] = getFluctuatedValue(
-                                prevData[source.key],
-                                5 + (baseLoadFactor * 5),
-                                0, 100, 1
-                            );
-                        }
-                    } else if (source.category === '应用') {
-                        if (source.key.includes('count') || source.key.includes('total')) {
-                            // 计数类指标，与请求数相关
-                            const baseValue = getCorrelatedValue(
-                                newRequestsValue,
-                                0.6,
-                                prevData[source.key],
-                                prevData[source.key] * 0.1
-                            );
-                            newDataPoint[source.key] = Math.round(baseValue);
-                        } else if (source.unit === 'ms') {
-                            // 响应时间类指标
-                            const baseValue = getCorrelatedValue(
-                                newResponseTimeValue,
-                                0.7,
-                                prevData[source.key],
-                                prevData[source.key] * 0.05
-                            );
-                            newDataPoint[source.key] = Math.round(baseValue);
-                        } else if (source.unit === '%') {
-                            // 百分比类指标
-                            newDataPoint[source.key] = getFluctuatedValue(
-                                prevData[source.key],
-                                3, 0, 100, 1
-                            );
-                        } else {
-                            // 其他应用指标
-                            newDataPoint[source.key] = getFluctuatedValue(
-                                prevData[source.key],
-                                prevData[source.key] * 0.1,
-                                0,
-                                prevData[source.key] * 2,
-                                0
-                            );
-                        }
-                    } else if (source.category === '业务') {
-                        // 业务指标波动更独立，但有时间相关性
-                        if (source.key.includes('revenue') || source.key.includes('sales')) {
-                            // 收入/销售类指标
-                            const dailyFactor = baseLoadFactor * 0.3 + 0.7; // 业务指标受负载影响较小
-                            const variation = prevData[source.key] * 0.05; // 5%的波动
-                            newDataPoint[source.key] = Math.round(
-                                prevData[source.key] * dailyFactor + getRandomValue(-variation, variation, 0)
-                            );
-                        } else if (source.unit === '%') {
-                            // 百分比类业务指标变化较小
-                            newDataPoint[source.key] = getFluctuatedValue(
-                                prevData[source.key],
-                                1, 0, 100, 1
-                            );
-                        } else {
-                            // 其他业务指标
-                            newDataPoint[source.key] = getFluctuatedValue(
-                                prevData[source.key],
-                                prevData[source.key] * 0.03,
-                                prevData[source.key] * 0.8,
-                                prevData[source.key] * 1.2,
-                                0
-                            );
-                        }
-                    } else {
-                        // 其他类别指标
-                        newDataPoint[source.key] = getFluctuatedValue(
-                            prevData[source.key],
-                            prevData[source.key] * 0.1,
-                            0,
-                            prevData[source.key] * 1.5,
-                            0
-                        );
-                    }
-                } else {
-                    // 如果没有前一个值，生成一个新的随机值
-                    // 使用与第一次初始化时相同的逻辑
-                    if (source.category === '系统') {
-                        if (source.unit === '%') {
-                            const baseValue = getCorrelatedValue(
-                                (newCpuValue + newMemoryValue) / 2,
-                                0.5,
-                                baseLoadFactor * 50,
-                                20
-                            );
-                            newDataPoint[source.key] = parseFloat(baseValue.toFixed(1));
-                        } else if (source.unit === 'MB' || source.unit === 'GB') {
-                            const baseValue = getCorrelatedValue(
-                                newMemoryValue,
-                                0.6,
-                                1000,
-                                200
-                            );
-                            newDataPoint[source.key] = Math.round(baseValue);
-                        } else {
-                            newDataPoint[source.key] = getRandomValue(10, 90, 1);
-                        }
-                    } else if (source.category === '应用') {
-                        if (source.key.includes('count') || source.key.includes('total')) {
-                            const baseValue = getCorrelatedValue(
-                                newRequestsValue,
-                                0.7,
-                                baseLoadFactor * 5000,
-                                1000
-                            );
-                            newDataPoint[source.key] = Math.round(baseValue);
-                        } else if (source.unit === 'ms') {
-                            const baseValue = getCorrelatedValue(
-                                newResponseTimeValue,
-                                0.6,
-                                newResponseTimeValue * 0.8,
-                                50
-                            );
-                            newDataPoint[source.key] = Math.round(baseValue);
-                        } else if (source.unit === '%') {
-                            newDataPoint[source.key] = getRandomValue(5, 95, 1);
-                        } else {
-                            newDataPoint[source.key] = getRandomValue(1, 100, 0);
-                        }
-                    } else if (source.category === '业务') {
-                        if (source.key.includes('revenue') || source.key.includes('sales')) {
-                            const dailyFactor = baseLoadFactor * 0.5 + 0.5;
-                            newDataPoint[source.key] = Math.round(10000 * dailyFactor + getRandomValue(-2000, 2000, 0));
-                        } else if (source.unit === '%') {
-                            newDataPoint[source.key] = getRandomValue(1, 30, 1);
-                        } else {
-                            newDataPoint[source.key] = getRandomValue(100, 10000, 0);
-                        }
-                    } else {
-                        newDataPoint[source.key] = getRandomValue(1, 100, 0);
-                    }
-                }
-            });
-        }
 
-        // 移除最旧的数据，添加新数据
-        newTimeSeriesData = [...timeSeriesData.slice(1), newDataPoint];
+    switch (type) {
+        case 'line':
+        case 'area':
+        case 'column': // Column can share some configs with line/area
+            return { ...commonLineAreaConfig, ...getDataConfig(dataKey, type) };
+        case 'pie':
+             return { ...getDataConfig(dataKey, type), interactions: [{ type: 'element-active' }] }; // dataKey often 'resource' for pie
+        case 'gauge':
+            return commonGaugeConfig(dataKey, currentData);
+        // Add other chart types if needed
+        default:
+            return getDataConfig(dataKey, type); // Fallback to basic data config
     }
-
-    // 更新饼图数据 - 资源分配
-    // 使资源分配也随系统负载变化
-    const baseLoadFraction = baseLoadFactor * 0.3 + 0.7; // 降低负载因子影响
-    const newPieData = [
-        { type: '数据库', value: getRandomValue(20, 40) * baseLoadFraction },
-        { type: '应用服务', value: getRandomValue(20, 35) * baseLoadFraction },
-        { type: '缓存', value: getRandomValue(10, 25) * baseLoadFraction },
-        { type: '前端', value: getRandomValue(5, 15) * baseLoadFraction },
-        { type: '其他', value: getRandomValue(1, 10) * baseLoadFraction },
-    ];
-
-    return { newTimeSeriesData, newPieData };
 };
+
 
 // ========== 警报相关函数 ==========
 
@@ -919,12 +496,12 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
 
             const alertId = `${panel.id}-${alert.id}`; // alert.id is the one generated in AlertSettingsModal
             let isActive = false;
-            let comparisonText = `阈值 ${alert.threshold}`;
+            // let comparisonText = `阈值 ${alert.threshold}`; // Not directly used in notifications anymore
 
             const condition = agriculturalAlertConditions.find(c => c.key === alert.conditionKey);
 
             if (condition) {
-                comparisonText = `${condition.name} ${alert.threshold} ${condition.unit || getUnitForDataKey(panel.dataKey) || ''}`;
+                // comparisonText = `${condition.name} ${alert.threshold} ${condition.unit || getUnitForDataKey(panel.dataKey) || ''}`;
                 switch (condition.comparison) {
                     case 'above':
                         isActive = currentValue > alert.threshold;
@@ -933,25 +510,18 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
                         isActive = currentValue < alert.threshold;
                         break;
                     case 'equal':
-                        // Using loose equality for potential string/number comparison if needed for some data types
                         // eslint-disable-next-line
                         isActive = currentValue == alert.threshold; 
                         break;
                     default:
-                        // Default to 'above' if comparison type is unknown, though this shouldn't happen with proper config
-                        isActive = currentValue > alert.threshold;
+                        isActive = currentValue > alert.threshold; // Default for unknown conditions
                 }
-            } else if (alert.conditionKey === 'above_threshold') { // Fallback for general conditions
+            } else if (alert.conditionKey === 'above_threshold') { 
                 isActive = currentValue > alert.threshold;
-                comparisonText = `高于阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey) || ''}`;
-            } else if (alert.conditionKey === 'below_threshold') { // Fallback for general conditions
+            } else if (alert.conditionKey === 'below_threshold') { 
                 isActive = currentValue < alert.threshold;
-                comparisonText = `低于阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey) || ''}`;
             } else {
-                 // Default behavior if no conditionKey is set (older alert configs or non-agri)
-                 // This maintains backward compatibility for existing alerts that don't have conditionKey
-                 isActive = currentValue >= alert.threshold; // Original behavior
-                 comparisonText = `超过阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey) || ''}`;
+                 isActive = currentValue >= alert.threshold; 
             }
 
             const existingAlertIndex = newActiveAlerts.findIndex(a => a.id === alertId);
@@ -964,8 +534,8 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
                     dataKey: panel.dataKey,
                     value: currentValue,
                     threshold: alert.threshold,
-                    type: alert.type, // 'warning', 'critical', 'info'
-                    conditionKey: alert.conditionKey, // Store the condition key
+                    type: alert.type, 
+                    conditionKey: alert.conditionKey, 
                     conditionName: condition ? condition.name : (alert.conditionKey === 'above_threshold' ? '高于阈值' : alert.conditionKey === 'below_threshold' ? '低于阈值' : '超过阈值'),
                     time: new Date()
                 };
@@ -976,7 +546,7 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
                     description: `当前值 ${currentValue} ${getUnitForDataKey(panel.dataKey) || ''}. 条件: ${newAlert.conditionName} (${alert.threshold} ${condition ? condition.unit || getUnitForDataKey(panel.dataKey) || '' : getUnitForDataKey(panel.dataKey) || ''}).`,
                     icon: alert.type === 'critical' ? <WarningOutlined style={{ color: '#f5222d' }} /> : 
                           alert.type === 'warning' ? <WarningOutlined style={{ color: '#faad14' }} /> :
-                          <InfoCircleOutlined style={{ color: '#1890ff' }} />, // Assuming InfoCircleOutlined for 'info'
+                          <InfoCircleOutlined style={{ color: '#1890ff' }} />, 
                     duration: 4.5,
                 });
                 playAlertSound(alert.type);
@@ -1003,72 +573,55 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
 // 获取面板统计颜色
 export const getPanelColor = (dataKey, value) => {
     if (dataKey === 'cpu' || dataKey === 'memory' || dataKey === 'disk') {
-        if (value > 90) return '#cf1322'; // 危险
-        if (value > 70) return '#faad14'; // 警告
-        return '#3f8600'; // 正常
+        if (value > 90) return '#cf1322'; 
+        if (value > 70) return '#faad14'; 
+        return '#3f8600'; 
     }
     if (dataKey === 'errors') {
-        if (value > 10) return '#cf1322'; // 危险
-        if (value > 5) return '#faad14'; // 警告
-        return '#3f8600'; // 正常
+        if (value > 10) return '#cf1322'; 
+        if (value > 5) return '#faad14'; 
+        return '#3f8600'; 
     }
-    return undefined;
+    // Add color logic for agricultural data if needed
+    if (dataKey === 'soil_moisture') {
+        if (value < 20 || value > 85) return '#faad14'; // Warning for too dry or too wet
+    }
+    if (dataKey === 'air_temp' || dataKey === 'soil_temp') {
+        if (value < 10 || value > 35) return '#faad14'; // Warning for extreme temps
+    }
+    if (dataKey === 'ndvi_index' && value < 0.3) return '#faad14';
+
+    return undefined; 
 };
 
 // 获取当前面板数据值
 export const getPanelCurrentValue = (dataKey, currentData) => {
     if (!currentData || !Object.keys(currentData).length) return '-';
-
-    switch (dataKey) {
-        case 'cpu': return currentData.cpu;
-        case 'memory': return currentData.memory;
-        case 'network': return currentData.network;
-        case 'disk': return currentData.disk;
-        case 'user': return currentData.user;
-        case 'load': return currentData.load;
-        case 'requests': return currentData.requests;
-        case 'response_time': return currentData.response_time;
-        case 'errors': return currentData.errors;
-        case 'queue': return currentData.queue;
-        default: return currentData[dataKey] !== undefined ? currentData[dataKey] : '-';
-    }
+    // This function should now correctly return values for new agricultural keys as well
+    // as they are part of the currentData object structure.
+    return currentData[dataKey] !== undefined ? currentData[dataKey] : '-';
 };
 
 // 从API获取数据 (模拟)
 export const fetchDataFromAPI = async (sourceId, dataConnections) => {
-    // 这里是模拟的API调用
-    // 在实际应用中，这应该是真实的API请求
     if (sourceId === 'api3') {
-        // 使用模拟数据
         return new Promise((resolve) => {
             setTimeout(() => {
                 resolve({
                     success: true,
-                    data: {
-                        // 一些随机生成的数据
-                    }
+                    data: { /* Mock data if needed, but generateMockData is primary */ }
                 });
             }, 500);
         });
     } else {
-        // 这里应该是真实的API请求
         try {
             const connection = dataConnections.find(conn => conn.id === sourceId);
-            if (!connection) {
-                throw new Error('数据源不存在');
-            }
-
-            // 模拟请求结果
-            return {
-                success: true,
-                data: {}
-            };
+            if (!connection) throw new Error('数据源不存在');
+            // Actual API fetch logic would go here
+            return { success: true, data: {} };
         } catch (error) {
             console.error('Failed to fetch data:', error);
-            return {
-                success: false,
-                error: error.message
-            };
+            return { success: false, error: error.message };
         }
     }
 };
@@ -1078,11 +631,10 @@ export const fetchDataFromAPI = async (sourceId, dataConnections) => {
 // 解析刷新率字符串为毫秒数
 export const parseRefreshRate = (refreshRate) => {
     if (refreshRate === 'off') return null;
-
     const value = parseInt(refreshRate);
     if (refreshRate.includes('s')) return value * 1000;
     if (refreshRate.includes('m')) return value * 60 * 1000;
-    return 60000; // 默认1分钟
+    return 60000; 
 };
 
 // 格式化毫秒为人类可读形式

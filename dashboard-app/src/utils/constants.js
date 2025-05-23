@@ -70,68 +70,85 @@ export const dataConnections = [
 // 初始面板配置
 export const initialPanels = [
   { 
-    id: 'cpu-panel', 
-    title: 'CPU使用率', 
+    id: 'soil-moisture-panel', 
+    title: '地块A - 土壤湿度', 
     type: 'line', 
-    dataKey: 'cpu', 
-    span: 8, 
+    dataKey: 'soil_moisture', 
+    span: 12, // antd Grid span for half width
     refreshRate: null,
     alerts: [
-      { id: 'cpu-warning', type: 'warning', threshold: 80, enabled: true },
-      { id: 'cpu-critical', type: 'critical', threshold: 90, enabled: true }
+      { id: 'soil-moisture-low-warn', conditionKey: 'low_soil_moisture', threshold: 30, enabled: true, type: 'warning' }
     ]
   },
   { 
-    id: 'memory-panel', 
-    title: '内存使用率', 
+    id: 'ndvi-panel', 
+    title: '区域1 - NDVI植被指数', 
     type: 'area', 
-    dataKey: 'memory', 
-    span: 8, 
+    dataKey: 'ndvi_index', 
+    span: 12, // antd Grid span for half width
     refreshRate: null,
     alerts: [
-      { id: 'memory-warning', type: 'warning', threshold: 75, enabled: true },
-      { id: 'memory-critical', type: 'critical', threshold: 90, enabled: true }
+      { id: 'ndvi-low-warn', conditionKey: 'low_ndvi_index', threshold: 0.4, enabled: true, type: 'warning' }
     ]
   },
   { 
-    id: 'network-panel', 
-    title: '网络流量', 
-    type: 'column', 
-    dataKey: 'network', 
-    span: 8, 
+    id: 'air-conditions-panel', 
+    title: '大棚1 - 空气温湿度', 
+    type: 'line', // Using line for multi-series (temp and humidity)
+    dataKey: 'air_temp', // Primary dataKey, can be adapted if chart supports multi-key from one panel
+    // Or consider a custom chart type or two separate panels for temp and humidity if needed.
+    // For this example, let's assume 'air_temp' is the primary one displayed or handled by a 'multi-line' like chart.
+    // If we want to show both distinctly, we might need to use 'all' or a similar mechanism,
+    // or have separate panels: 'air-temp-panel' and 'air-humidity-panel'.
+    // Let's make this one for Air Temperature and add another for Humidity.
+    span: 12,
     refreshRate: null,
     alerts: [
-      { id: 'network-warning', type: 'warning', threshold: 70, enabled: true }
+      { id: 'air-temp-high-crit', conditionKey: 'high_air_temp', threshold: 35, enabled: true, type: 'critical' },
+      { id: 'air-temp-low-warn', conditionKey: 'low_air_temp', threshold: 10, enabled: true, type: 'warning' }
     ]
   },
-  { 
-    id: 'resource-panel', 
-    title: '资源分配', 
-    type: 'pie', 
-    dataKey: 'resource', 
-    span: 8, 
+  {
+    id: 'air-humidity-panel',
+    title: '大棚1 - 空气湿度',
+    type: 'gauge', // Gauge for humidity percentage
+    dataKey: 'air_humidity',
+    span: 12,
     refreshRate: null,
-    alerts: []
+    alerts: [
+      { id: 'air-humidity-high', conditionKey: 'high_air_humidity', threshold: 85, enabled: true, type: 'warning'},
+      { id: 'air-humidity-low', conditionKey: 'low_air_humidity', threshold: 40, enabled: true, type: 'warning'}
+    ]
   },
-  { 
-    id: 'overview-panel', 
-    title: '系统指标概览', 
-    type: 'multi-line', 
-    dataKey: 'all', 
-    span: 16, 
-    refreshRate: null,
-    alerts: []
-  },
+  {
+    id: 'crop-health-overview-panel',
+    title: '作物健康状况图 (地块总览)',
+    type: 'map_marker', // Placeholder, will show '地图标记点图表占位符'
+    dataKey: 'crop_health_map', // This dataKey will need specific handling in data generation and chart rendering
+    span: 24, // Full width
+    refreshRate: '5m',
+    alerts: [
+      { id: 'crop-health-issue', conditionKey: 'crop_health_issue_detected', threshold: 1, enabled: true, type: 'critical'} // Assuming 1 means issue detected
+    ]
+  }
 ];
 
 // 初始布局
+// react-grid-layout w is typically based on 12 columns.
+// antd span 12 -> w=6 (half width if gridCols=12 in PanelGrid)
+// antd span 24 -> w=12 (full width if gridCols=12 in PanelGrid)
+// Assuming PanelGrid's `cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}` or similar, let's use w based on 12 columns.
+// For simplicity, let's make the first four panels take half width (w=6) and the last one full width (w=12).
+// The default PanelGrid `cols` prop in `react-grid-layout` is `cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}`.
+// So antd `span=12` would map to `w=6` on `lg` breakpoint.
+// antd `span=24` would map to `w=12` on `lg` breakpoint.
 export const initialLayout = {
   lg: [
-    { i: 'cpu-panel', x: 0, y: 0, w: 4, h: 3 },
-    { i: 'memory-panel', x: 4, y: 0, w: 4, h: 3 },
-    { i: 'network-panel', x: 8, y: 0, w: 4, h: 3 },
-    { i: 'resource-panel', x: 0, y: 3, w: 4, h: 3 },
-    { i: 'overview-panel', x: 4, y: 3, w: 8, h: 3 },
+    { i: 'soil-moisture-panel', x: 0, y: 0, w: 6, h: 3 },
+    { i: 'ndvi-panel', x: 6, y: 0, w: 6, h: 3 },
+    { i: 'air-conditions-panel', x: 0, y: 3, w: 6, h: 3 }, // Air Temp
+    { i: 'air-humidity-panel', x: 6, y: 3, w: 6, h: 3 }, // Air Humidity
+    { i: 'crop-health-overview-panel', x: 0, y: 6, w: 12, h: 4 } // Crop Health Map
   ]
 };
 
