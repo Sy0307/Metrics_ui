@@ -3,7 +3,7 @@ import { Layout, Row, Col, Button, Space, Typography, Dropdown, Badge, Switch, M
 import {
   MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, SettingOutlined,
   BellOutlined, DatabaseOutlined, ApiOutlined, ClockCircleOutlined,
-  ReloadOutlined, PlusOutlined, SaveOutlined
+  ReloadOutlined, PlusOutlined, SaveOutlined, FileTextOutlined, CarryOutOutlined
 } from '@ant-design/icons';
 import PanelGrid from './PanelGrid';
 import { formatTimeRemaining, getUnitForDataKey } from '../../utils/helpers';
@@ -79,6 +79,19 @@ const DashboardLayout = ({
               key: '4',
               icon: <DatabaseOutlined />,
               label: '数据源',
+              onClick: () => console.log('Navigate to Data Sources'), // Placeholder action
+            },
+            {
+              key: '5',
+              icon: <FileTextOutlined />,
+              label: '农业报告',
+              onClick: () => console.log('Navigate to Reports'), // Placeholder action
+            },
+            {
+              key: '6',
+              icon: <CarryOutOutlined />,
+              label: '农事任务',
+              onClick: () => console.log('Navigate to Tasks'), // Placeholder action
             },
           ]}
         />

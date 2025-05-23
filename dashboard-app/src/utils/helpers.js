@@ -1,7 +1,7 @@
 import React from 'react';
 import { notification } from 'antd';
 import { WarningOutlined, CheckCircleOutlined } from '@ant-design/icons';
-import { dataSources } from './constants';
+import { dataSources, agriculturalAlertConditions } from './constants';
 
 // ========== 数据生成相关函数 ==========
 
@@ -917,12 +917,46 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
         panel.alerts.forEach(alert => {
             if (!alert.enabled) return;
 
-            const alertId = `${panel.id}-${alert.id}`;
-            const isActive = currentValue >= alert.threshold;
+            const alertId = `${panel.id}-${alert.id}`; // alert.id is the one generated in AlertSettingsModal
+            let isActive = false;
+            let comparisonText = `阈值 ${alert.threshold}`;
+
+            const condition = agriculturalAlertConditions.find(c => c.key === alert.conditionKey);
+
+            if (condition) {
+                comparisonText = `${condition.name} ${alert.threshold} ${condition.unit || getUnitForDataKey(panel.dataKey) || ''}`;
+                switch (condition.comparison) {
+                    case 'above':
+                        isActive = currentValue > alert.threshold;
+                        break;
+                    case 'below':
+                        isActive = currentValue < alert.threshold;
+                        break;
+                    case 'equal':
+                        // Using loose equality for potential string/number comparison if needed for some data types
+                        // eslint-disable-next-line
+                        isActive = currentValue == alert.threshold; 
+                        break;
+                    default:
+                        // Default to 'above' if comparison type is unknown, though this shouldn't happen with proper config
+                        isActive = currentValue > alert.threshold;
+                }
+            } else if (alert.conditionKey === 'above_threshold') { // Fallback for general conditions
+                isActive = currentValue > alert.threshold;
+                comparisonText = `高于阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey) || ''}`;
+            } else if (alert.conditionKey === 'below_threshold') { // Fallback for general conditions
+                isActive = currentValue < alert.threshold;
+                comparisonText = `低于阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey) || ''}`;
+            } else {
+                 // Default behavior if no conditionKey is set (older alert configs or non-agri)
+                 // This maintains backward compatibility for existing alerts that don't have conditionKey
+                 isActive = currentValue >= alert.threshold; // Original behavior
+                 comparisonText = `超过阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey) || ''}`;
+            }
+
             const existingAlertIndex = newActiveAlerts.findIndex(a => a.id === alertId);
 
             if (isActive && existingAlertIndex === -1) {
-                // 新告警触发
                 const newAlert = {
                     id: alertId,
                     panelId: panel.id,
@@ -930,32 +964,30 @@ export const checkAlerts = (panels, newData, activeAlerts) => {
                     dataKey: panel.dataKey,
                     value: currentValue,
                     threshold: alert.threshold,
-                    type: alert.type,
+                    type: alert.type, // 'warning', 'critical', 'info'
+                    conditionKey: alert.conditionKey, // Store the condition key
+                    conditionName: condition ? condition.name : (alert.conditionKey === 'above_threshold' ? '高于阈值' : alert.conditionKey === 'below_threshold' ? '低于阈值' : '超过阈值'),
                     time: new Date()
                 };
-
                 newActiveAlerts.push(newAlert);
 
-                // 显示通知
                 notification.open({
-                    message: `${alert.type === 'critical' ? '严重警报' : '警告'}：${panel.title}`,
-                    description: `当前值 ${currentValue} ${getUnitForDataKey(panel.dataKey)} 超过了阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey)}`,
-                    icon: alert.type === 'critical' ?
-                        <WarningOutlined style={{ color: '#f5222d' }} /> :
-                        <WarningOutlined style={{ color: '#faad14' }} />,
+                    message: `${alert.type === 'critical' ? '严重警报' : alert.type === 'warning' ? '警告' : '信息'}：${panel.title}`,
+                    description: `当前值 ${currentValue} ${getUnitForDataKey(panel.dataKey) || ''}. 条件: ${newAlert.conditionName} (${alert.threshold} ${condition ? condition.unit || getUnitForDataKey(panel.dataKey) || '' : getUnitForDataKey(panel.dataKey) || ''}).`,
+                    icon: alert.type === 'critical' ? <WarningOutlined style={{ color: '#f5222d' }} /> : 
+                          alert.type === 'warning' ? <WarningOutlined style={{ color: '#faad14' }} /> :
+                          <InfoCircleOutlined style={{ color: '#1890ff' }} />, // Assuming InfoCircleOutlined for 'info'
                     duration: 4.5,
                 });
-
-                // 播放警报声音
                 playAlertSound(alert.type);
 
             } else if (!isActive && existingAlertIndex !== -1) {
-                // 告警已恢复
+                const recoveredAlert = newActiveAlerts[existingAlertIndex];
                 newActiveAlerts.splice(existingAlertIndex, 1);
 
                 notification.open({
-                    message: `告警已恢复：${panel.title}`,
-                    description: `当前值 ${currentValue} ${getUnitForDataKey(panel.dataKey)} 已低于阈值 ${alert.threshold} ${getUnitForDataKey(panel.dataKey)}`,
+                    message: `警报已恢复：${panel.title}`,
+                    description: `当前值 ${currentValue} ${getUnitForDataKey(panel.dataKey) || ''}. 条件: ${recoveredAlert.conditionName} (${recoveredAlert.threshold} ${condition ? condition.unit || getUnitForDataKey(panel.dataKey) || '' : getUnitForDataKey(panel.dataKey) || ''}) 已恢复正常.`,
                     icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
                     duration: 3,
                 });

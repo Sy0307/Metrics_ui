@@ -150,8 +150,12 @@ const PanelCard = ({
         return <Heatmap {...config} height={chartHeight} />;
       case 'waterfall':
         return <Waterfall {...config} height={chartHeight} />;
+      case 'map_marker':
+        return <div style={{ height: chartHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>地图标记点图表占位符</div>;
+      case 'image_overlay':
+        return <div style={{ height: chartHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>影像叠加层图表占位符</div>;
       default:
-        return <div>未支持的图表类型</div>;
+        return <div style={{ height: chartHeight, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>未支持的图表类型</div>;
     }
   };
 
@@ -220,7 +224,7 @@ const PanelCard = ({
           <Divider style={{ margin: '12px 0' }} />
         </>
       )}
-      <div style={{ height: 'calc(100% - 80px)', minHeight: '120px' }}>
+      <div style={{ height: panel.height || 200, minHeight: '120px' }}>
         {renderChart()}
       </div>
     </Card>

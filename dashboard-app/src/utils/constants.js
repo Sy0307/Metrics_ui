@@ -2,7 +2,7 @@ import React from 'react';
 import {
   LineChartOutlined, AreaChartOutlined, BarChartOutlined, PieChartOutlined,
   DashboardOutlined, RadarChartOutlined, HeatMapOutlined, FunnelPlotOutlined,
-  DotChartOutlined
+  DotChartOutlined, PushpinOutlined, FileImageOutlined
 } from '@ant-design/icons';
 
 // 数据源选项
@@ -17,6 +17,19 @@ export const dataSources = [
   { key: 'response_time', name: '响应时间', unit: 'ms', category: '应用' },
   { key: 'errors', name: '错误率', unit: '%', category: '应用' },
   { key: 'queue', name: '队列长度', unit: '', category: '应用' },
+  // Agricultural Data Sources
+  // Farmland Sensor Data
+  { key: 'soil_temp', name: '土壤温度', unit: '°C', category: '农田传感数据' },
+  { key: 'soil_moisture', name: '土壤湿度', unit: '%', category: '农田传感数据' },
+  { key: 'air_temp', name: '空气温度', unit: '°C', category: '农田传感数据' },
+  { key: 'air_humidity', name: '空气湿度', unit: '%', category: '农田传感数据' },
+  { key: 'light_intensity', name: '光照强度', unit: 'lux', category: '农田传感数据' },
+  // Remote Sensing Imagery Data
+  { key: 'ndvi_index', name: 'NDVI植被指数', unit: '', category: '遥感影像数据' },
+  { key: 'crop_health_map', name: '作物健康图', unit: '', category: '遥感影像数据' },
+  // Weather Data
+  { key: 'weather_forecast', name: '天气预报', unit: '', category: '气象数据' },
+  { key: 'historical_weather', name: '历史气象记录', unit: '', category: '气象数据' },
 ];
 
 // 图表类型选项
@@ -31,6 +44,8 @@ export const chartTypes = [
   { value: 'waterfall', label: '瀑布图', icon: <FunnelPlotOutlined /> },
   { value: 'ring', label: '环形进度', icon: <DotChartOutlined /> },
   { value: 'funnel', label: '漏斗图', icon: <FunnelPlotOutlined /> },
+  { value: 'map_marker', label: '地图标记点', icon: <PushpinOutlined /> },
+  { value: 'image_overlay', label: '影像叠加层', icon: <FileImageOutlined /> },
 ];
 
 // 刷新频率选项
@@ -119,3 +134,25 @@ export const initialLayout = {
     { i: 'overview-panel', x: 4, y: 3, w: 8, h: 3 },
   ]
 };
+
+// 农业相关警报条件类型
+export const agriculturalAlertConditions = [
+  // 土壤传感器数据相关
+  { key: 'low_soil_moisture', name: '土壤湿度过低', dataKey: 'soil_moisture', comparison: 'below', unit: '%' },
+  { key: 'high_soil_temp', name: '土壤温度过高', dataKey: 'soil_temp', comparison: 'above', unit: '°C' },
+  { key: 'low_soil_temp', name: '土壤温度过低', dataKey: 'soil_temp', comparison: 'below', unit: '°C' },
+  // 空气传感器数据相关
+  { key: 'high_air_temp', name: '空气温度过高', dataKey: 'air_temp', comparison: 'above', unit: '°C' },
+  { key: 'low_air_temp', name: '空气温度过低', dataKey: 'air_temp', comparison: 'below', unit: '°C' },
+  { key: 'high_air_humidity', name: '空气湿度过高', dataKey: 'air_humidity', comparison: 'above', unit: '%' },
+  { key: 'low_air_humidity', name: '空气湿度过低', dataKey: 'air_humidity', comparison: 'below', unit: '%' },
+  // 光照强度数据相关
+  { key: 'low_light_intensity', name: '光照强度不足', dataKey: 'light_intensity', comparison: 'below', unit: 'lux' },
+  // NDVI 植被指数相关
+  { key: 'low_ndvi_index', name: 'NDVI植被指数偏低', dataKey: 'ndvi_index', comparison: 'below', unit: '' },
+  { key: 'high_ndvi_index', name: 'NDVI植被指数偏高', dataKey: 'ndvi_index', comparison: 'above', unit: '' },
+  // 作物健康图 - 假设我们有一个特定的值或状态来表示异常
+  // For crop_health_map, we might need a more complex logic or specific values that indicate alerts.
+  // This is a placeholder, actual implementation might differ based on how crop_health_map data is structured.
+  { key: 'crop_health_issue_detected', name: '作物健康问题预警', dataKey: 'crop_health_map', comparison: 'equal', unit: '' }, // Example: 'equal' to a specific status code like ' unhealthy'
+];
