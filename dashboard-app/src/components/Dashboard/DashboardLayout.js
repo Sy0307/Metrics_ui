@@ -3,7 +3,8 @@ import { Layout, Row, Col, Button, Space, Typography, Dropdown, Badge, Switch, M
 import {
   MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, SettingOutlined,
   BellOutlined, DatabaseOutlined, ApiOutlined, ClockCircleOutlined,
-  ReloadOutlined, PlusOutlined, SaveOutlined, FileTextOutlined, CarryOutOutlined
+  ReloadOutlined, PlusOutlined, SaveOutlined, FileTextOutlined, CarryOutOutlined,
+  BarChartOutlined
 } from '@ant-design/icons';
 import PanelGrid from './PanelGrid';
 import { formatTimeRemaining, getUnitForDataKey } from '../../utils/helpers';
@@ -46,15 +47,15 @@ const DashboardLayout = ({
   removePanel,
   clonePanel,
   // Step 3: Receive handleViewChange and currentView
-  handleViewChange, 
+  handleViewChange,
   currentView,
   children // For Step 4 (rendering content)
 }) => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        trigger={null} 
-        collapsible 
+      <Sider
+        trigger={null}
+        collapsible
         collapsed={collapsed}
         theme={darkMode ? 'dark' : 'light'}
       >
@@ -98,17 +99,17 @@ const DashboardLayout = ({
           ]}
         />
         {!collapsed && activeAlerts.length > 0 && (
-          <div style={{ 
+          <div style={{
             padding: '12px',
-            margin: '16px', 
+            margin: '16px',
             background: darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
             borderRadius: '4px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <Text strong style={{ color: darkMode ? '#fff' : undefined }}>活跃警报</Text>
-              <Button 
-                type="link" 
-                size="small" 
+              <Button
+                type="link"
+                size="small"
                 onClick={clearAllAlerts}
                 style={{ padding: 0, color: darkMode ? '#fff' : undefined }}
               >
@@ -128,8 +129,8 @@ const DashboardLayout = ({
                 >
                   <List.Item.Meta
                     avatar={
-                      <Badge 
-                        status={alert.type === 'critical' ? 'error' : 'warning'} 
+                      <Badge
+                        status={alert.type === 'critical' ? 'error' : 'warning'}
                         style={{ marginTop: '6px' }}
                       />
                     }
@@ -180,8 +181,8 @@ const DashboardLayout = ({
               <Title level={4} style={{ display: 'inline', margin: '0 16px', color: darkMode ? '#fff' : undefined }}>
                 数据看板
               </Title>
-              <Badge 
-                count={activeAlerts.length} 
+              <Badge
+                count={activeAlerts.length}
                 style={{ marginLeft: 8 }}
                 offset={[-8, 0]}
                 overflowCount={99}
@@ -199,7 +200,7 @@ const DashboardLayout = ({
             <Col>
               <Space size="middle" style={{ marginRight: 16 }}>
                 <Dropdown
-                  menu={{ 
+                  menu={{
                     items: dataConnections.map(conn => ({
                       key: conn.id,
                       label: conn.name,
@@ -214,44 +215,44 @@ const DashboardLayout = ({
                     {dataConnections.find(conn => conn.id === activeDataConnection)?.name || '选择数据源'}
                   </Button>
                 </Dropdown>
-                
-                <RangePicker 
-                  showTime 
-                  style={{ width: 300 }} 
+
+                <RangePicker
+                  showTime
+                  style={{ width: 300 }}
                 />
-                
-                <Button 
+
+                <Button
                   type={showRefreshSettings ? "primary" : "default"}
                   icon={<ClockCircleOutlined />}
                   onClick={() => setShowRefreshSettings(!showRefreshSettings)}
                 >
                   刷新设置
                 </Button>
-                
-                <Button 
-                  icon={<ReloadOutlined />} 
+
+                <Button
+                  icon={<ReloadOutlined />}
                   onClick={handleManualRefresh}
                   loading={isLoading}
                   disabled={isLoading}
                 >
                   立即刷新
                 </Button>
-                
-                <Switch 
-                  checkedChildren="暗色" 
-                  unCheckedChildren="亮色" 
-                  checked={darkMode} 
-                  onChange={setDarkMode} 
+
+                <Switch
+                  checkedChildren="暗色"
+                  unCheckedChildren="亮色"
+                  checked={darkMode}
+                  onChange={setDarkMode}
                 />
-                
-                <Button 
-                  type="primary" 
+
+                <Button
+                  type="primary"
                   icon={<PlusOutlined />}
                   onClick={showAddPanelModal}
                 >
                   添加面板
                 </Button>
-                
+
                 <Button
                   icon={<SaveOutlined />}
                   onClick={() => message.success('仪表盘配置已保存')}
@@ -262,7 +263,7 @@ const DashboardLayout = ({
             </Col>
           </Row>
         </Header>
-        
+
         {/* 刷新设置面板 */}
         {showRefreshSettings && (
           <div style={{
@@ -274,8 +275,8 @@ const DashboardLayout = ({
               <Col span={6}>
                 <Space>
                   <Text strong style={{ color: darkMode ? 'white' : undefined }}>全局刷新频率：</Text>
-                  <Select 
-                    value={refreshRate} 
+                  <Select
+                    value={refreshRate}
                     onChange={handleRefreshRateChange}
                     style={{ width: 150 }}
                   >
@@ -287,23 +288,23 @@ const DashboardLayout = ({
                   </Select>
                 </Space>
               </Col>
-              
+
               <Col span={6}>
                 {refreshRate !== 'off' && (
                   <Space>
                     <Text style={{ color: darkMode ? 'white' : undefined }}>
                       下次刷新在: {formatTimeRemaining(timeRemaining)}
                     </Text>
-                    <Progress 
-                      percent={progressPercent} 
-                      showInfo={false} 
-                      size="small" 
-                      style={{ width: 100 }} 
+                    <Progress
+                      percent={progressPercent}
+                      showInfo={false}
+                      size="small"
+                      style={{ width: 100 }}
                     />
                   </Space>
                 )}
               </Col>
-              
+
               <Col span={12}>
                 <Text type="secondary" style={{ color: darkMode ? '#aaa' : undefined }}>
                   提示：您也可以为每个面板单独设置刷新频率，点击面板右上角的设置按钮。
@@ -312,7 +313,7 @@ const DashboardLayout = ({
             </Row>
           </div>
         )}
-        
+
         <Content
           style={{
             margin: '24px 16px',
@@ -322,7 +323,7 @@ const DashboardLayout = ({
             // overflowX: 'hidden' // Removed for clarity, can be re-added if specific layout issues arise
           }}
         >
-          {children} 
+          {children}
         </Content>
         <Footer
           style={{

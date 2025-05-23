@@ -51,7 +51,6 @@ export const chartTypes = [
 // 刷新频率选项
 export const refreshOptions = [
   { value: 'off', label: '关闭自动刷新' },
-  { value: '3s', label: '3秒' },
   { value: '5s', label: '5秒' },
   { value: '10s', label: '10秒' },
   { value: '30s', label: '30秒' },
@@ -69,38 +68,33 @@ export const dataConnections = [
 
 // 初始面板配置
 export const initialPanels = [
-  { 
-    id: 'soil-moisture-panel', 
-    title: '地块A - 土壤湿度', 
-    type: 'line', 
-    dataKey: 'soil_moisture', 
-    span: 12, // antd Grid span for half width
+  {
+    id: 'soil-moisture-panel',
+    title: '地块A - 土壤湿度',
+    type: 'line', // 保持折线图，因为湿度变化适合用线性展示
+    dataKey: 'soil_moisture',
+    span: 12,
     refreshRate: null,
     alerts: [
       { id: 'soil-moisture-low-warn', conditionKey: 'low_soil_moisture', threshold: 30, enabled: true, type: 'warning' }
     ]
   },
-  { 
-    id: 'ndvi-panel', 
-    title: '区域1 - NDVI植被指数', 
-    type: 'area', 
-    dataKey: 'ndvi_index', 
-    span: 12, // antd Grid span for half width
+  {
+    id: 'ndvi-panel',
+    title: '区域1 - NDVI植被指数',
+    type: 'area', // 改为面积图，更好地展示植被覆盖度
+    dataKey: 'ndvi_index',
+    span: 12,
     refreshRate: null,
     alerts: [
       { id: 'ndvi-low-warn', conditionKey: 'low_ndvi_index', threshold: 0.4, enabled: true, type: 'warning' }
     ]
   },
-  { 
-    id: 'air-conditions-panel', 
-    title: '大棚1 - 空气温湿度', 
-    type: 'line', // Using line for multi-series (temp and humidity)
-    dataKey: 'air_temp', // Primary dataKey, can be adapted if chart supports multi-key from one panel
-    // Or consider a custom chart type or two separate panels for temp and humidity if needed.
-    // For this example, let's assume 'air_temp' is the primary one displayed or handled by a 'multi-line' like chart.
-    // If we want to show both distinctly, we might need to use 'all' or a similar mechanism,
-    // or have separate panels: 'air-temp-panel' and 'air-humidity-panel'.
-    // Let's make this one for Air Temperature and add another for Humidity.
+  {
+    id: 'air-temp-panel',
+    title: '大棚1 - 空气温度',
+    type: 'column', // 改为柱状图，更直观地显示温度变化
+    dataKey: 'air_temp',
     span: 12,
     refreshRate: null,
     alerts: [
@@ -111,13 +105,36 @@ export const initialPanels = [
   {
     id: 'air-humidity-panel',
     title: '大棚1 - 空气湿度',
-    type: 'gauge', // Gauge for humidity percentage
+    type: 'gauge', // 保持仪表盘，湿度百分比适合用仪表显示
     dataKey: 'air_humidity',
     span: 12,
     refreshRate: null,
     alerts: [
-      { id: 'air-humidity-high', conditionKey: 'high_air_humidity', threshold: 85, enabled: true, type: 'warning'},
-      { id: 'air-humidity-low', conditionKey: 'low_air_humidity', threshold: 40, enabled: true, type: 'warning'}
+      { id: 'air-humidity-high', conditionKey: 'high_air_humidity', threshold: 85, enabled: true, type: 'warning' },
+      { id: 'air-humidity-low', conditionKey: 'low_air_humidity', threshold: 40, enabled: true, type: 'warning' }
+    ]
+  },
+  {
+    id: 'light-intensity-panel',
+    title: '光照监测 - 光照强度',
+    type: 'area', // 面积图展示光照强度变化
+    dataKey: 'light_intensity',
+    span: 12,
+    refreshRate: null,
+    alerts: [
+      { id: 'light-low-warn', conditionKey: 'low_light_intensity', threshold: 10000, enabled: true, type: 'warning' }
+    ]
+  },
+  {
+    id: 'soil-temp-panel',
+    title: '地块A - 土壤温度',
+    type: 'line', // 线性图展示土壤温度的平缓变化
+    dataKey: 'soil_temp',
+    span: 12,
+    refreshRate: null,
+    alerts: [
+      { id: 'soil-temp-high', conditionKey: 'high_soil_temp', threshold: 28, enabled: true, type: 'warning' },
+      { id: 'soil-temp-low', conditionKey: 'low_soil_temp', threshold: 12, enabled: true, type: 'warning' }
     ]
   },
   {
@@ -128,7 +145,7 @@ export const initialPanels = [
     span: 24, // Full width
     refreshRate: '5m',
     alerts: [
-      { id: 'crop-health-issue', conditionKey: 'crop_health_issue_detected', threshold: 1, enabled: true, type: 'critical'} // Assuming 1 means issue detected
+      { id: 'crop-health-issue', conditionKey: 'crop_health_issue_detected', threshold: 1, enabled: true, type: 'critical' } // Assuming 1 means issue detected
     ]
   }
 ];
@@ -146,9 +163,11 @@ export const initialLayout = {
   lg: [
     { i: 'soil-moisture-panel', x: 0, y: 0, w: 6, h: 3 },
     { i: 'ndvi-panel', x: 6, y: 0, w: 6, h: 3 },
-    { i: 'air-conditions-panel', x: 0, y: 3, w: 6, h: 3 }, // Air Temp
+    { i: 'air-temp-panel', x: 0, y: 3, w: 6, h: 3 }, // Air Temp
     { i: 'air-humidity-panel', x: 6, y: 3, w: 6, h: 3 }, // Air Humidity
-    { i: 'crop-health-overview-panel', x: 0, y: 6, w: 12, h: 4 } // Crop Health Map
+    { i: 'light-intensity-panel', x: 0, y: 6, w: 6, h: 3 }, // 光照强度
+    { i: 'soil-temp-panel', x: 6, y: 6, w: 6, h: 3 }, // 土壤温度
+    { i: 'crop-health-overview-panel', x: 0, y: 9, w: 12, h: 4 } // Crop Health Map
   ]
 };
 

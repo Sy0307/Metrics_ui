@@ -12,7 +12,7 @@ const initialTasks = [
   { id: 'task-4', title: '采购肥料 (10袋)', description: '前往农资店采购10袋复合肥。', dueDate: '2024-08-03', status: 'inprogress', priority: '中', assignee: '赵六' },
   { id: 'task-5', title: '完成水稻收割 (B区)', description: 'B区水稻已全部收割完毕并入库。', dueDate: '2024-07-30', status: 'completed', priority: '高', assignee: '张三' },
   { id: 'task-6', title: '提交上周工作报告', description: '整理并提交上周的农事活动报告。', dueDate: '2024-08-01', status: 'completed', priority: '中', assignee: '李四' },
-  { id: 'task-7', title: '校准天气监测站设备', description: '检查并校准气象站的各项传感器。', dueDate: '2024-08-10', status: 'todo', priority: '低', assignee: '王五'},
+  { id: 'task-7', title: '校准天气监测站设备', description: '检查并校准气象站的各项传感器。', dueDate: '2024-08-10', status: 'todo', priority: '低', assignee: '王五' },
 ];
 
 const TaskCard = ({ task }) => {
@@ -51,6 +51,7 @@ const TaskCard = ({ task }) => {
 
 
 const FarmTasksPage = () => {
+  // eslint-disable-next-line no-unused-vars
   const [tasks, setTasks] = useState(initialTasks);
   const [isModalVisible, setIsModalVisible] = useState(false);
 

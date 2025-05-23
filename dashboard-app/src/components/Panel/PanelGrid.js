@@ -1,10 +1,9 @@
 import React from 'react';
 import { Responsive, WidthProvider } from 'react-grid-layout';
+import PanelCard from './PanelCard';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import PanelCard from '../Panel/PanelCard';
 
-// 创建响应式Grid布局
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 const PanelGrid = ({
@@ -19,20 +18,18 @@ const PanelGrid = ({
   setPanelRefreshRate,
   onShowAlertSettings,
   onRemovePanel,
-  onClonePanel,
-  onEditPanel
+  onClonePanel
 }) => {
   return (
     <ResponsiveGridLayout
       className="layout"
       layouts={layout}
-      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480 }}
-      cols={{ lg: 12, md: 12, sm: 6, xs: 4 }}
+      breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
+      cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
       rowHeight={100}
-      onLayoutChange={(layout, layouts) => onLayoutChange(layouts)}
-      isDraggable={true}
-      isResizable={true}
-      margin={[16, 16]}
+      onLayoutChange={(layout) => onLayoutChange({ lg: layout })}
+      isDraggable
+      isResizable
     >
       {panels.map(panel => (
         <div key={panel.id}>
@@ -43,11 +40,10 @@ const PanelGrid = ({
             pieData={pieData}
             isLoading={isLoading}
             darkMode={darkMode}
-            onRefreshRateChange={setPanelRefreshRate}
-            onShowAlertSettings={onShowAlertSettings}
-            onRemovePanel={onRemovePanel}
-            onClonePanel={onClonePanel}
-            onEditPanel={onEditPanel}
+            onRefreshRateChange={(rate) => setPanelRefreshRate(panel.id, rate)}
+            onShowAlertSettings={() => onShowAlertSettings(panel)}
+            onRemove={() => onRemovePanel(panel.id)}
+            onClone={() => onClonePanel(panel.id)}
           />
         </div>
       ))}
@@ -55,4 +51,4 @@ const PanelGrid = ({
   );
 };
 
-export default PanelGrid;
+export default PanelGrid; 

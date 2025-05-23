@@ -3,21 +3,22 @@ import React, { useState, useEffect } from 'react';
 import { Select, DatePicker, Button, Card, Row, Col, Typography, Statistic, message } from 'antd';
 import { Line } from '@ant-design/plots'; // 导入图表组件
 import { dataSources } from '../../utils/constants'; // 导入数据源定义
-// import moment from 'moment'; // 如果需要处理日期对象
+import dayjs from 'dayjs'; // 使用 dayjs 替代 moment
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 // 获取农业相关的数据源选项
 const agriculturalDataOptions = dataSources.filter(
-  ds => ['农田传感数据', '遥感影像数据', '气象数据'].includes(ds.category) && 
-        !['crop_health_map', 'weather_forecast', 'historical_weather'].includes(ds.key) // 暂时排除非数值序列型数据
+  ds => ['农田传感数据', '遥感影像数据', '气象数据'].includes(ds.category) &&
+    !['crop_health_map', 'weather_forecast', 'historical_weather'].includes(ds.key) // 暂时排除非数值序列型数据
 ).map(ds => ({ label: `${ds.name} (${ds.key})`, value: ds.key }));
 
 
 const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
   const [selectedDataSourceKey, setSelectedDataSourceKey] = useState(null);
-  const [dateRange, setDateRange] = useState(null); // For storing selected date strings
+  // eslint-disable-next-line no-unused-vars
+  const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'day'), dayjs()]);
   const [reportChartData, setReportChartData] = useState([]);
   const [reportStatistics, setReportStatistics] = useState(null);
   const [isReportGenerated, setIsReportGenerated] = useState(false);
@@ -28,7 +29,7 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
     // console.log('Reports Page currentData:', currentData);
     // Auto-select first available data source
     if (!selectedDataSourceKey && agriculturalDataOptions.length > 0) {
-        setSelectedDataSourceKey(agriculturalDataOptions[0].value);
+      setSelectedDataSourceKey(agriculturalDataOptions[0].value);
     }
   }, [timeSeriesData, currentData, selectedDataSourceKey]);
 
@@ -41,7 +42,7 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
       message.warn('暂无时间序列数据可用于生成报告。');
       setReportChartData([]);
       setReportStatistics(null);
-      setIsReportGenerated(true); 
+      setIsReportGenerated(true);
       return;
     }
 
@@ -66,17 +67,17 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
     const max = Math.max(...values);
     const count = values.length;
 
-    setReportStatistics({ 
-      avg: parseFloat(avg.toFixed(2)), 
-      min: parseFloat(min.toFixed(2)), 
-      max: parseFloat(max.toFixed(2)), 
-      count 
+    setReportStatistics({
+      avg: parseFloat(avg.toFixed(2)),
+      min: parseFloat(min.toFixed(2)),
+      max: parseFloat(max.toFixed(2)),
+      count
     });
     setReportChartData(relevantData);
     setIsReportGenerated(true);
     message.success('报告已生成!');
   };
-  
+
   const selectedDataSourceInfo = dataSources.find(ds => ds.key === selectedDataSourceKey);
   const yAxisTitle = selectedDataSourceInfo ? `${selectedDataSourceInfo.name} (${selectedDataSourceInfo.unit || ''})` : '值';
 
@@ -89,7 +90,7 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
     smooth: true,
     tooltip: { showCrosshairs: true, shared: true },
     meta: {
-        value: { alias: yAxisTitle }
+      value: { alias: yAxisTitle }
     }
   };
 
@@ -97,7 +98,7 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
   return (
     <div style={{ padding: '20px' }}>
       <Title level={2}>传感器数据汇总报告</Title>
-      <Row gutter={[16, 16]} style={{marginTop: '20px'}}>
+      <Row gutter={[16, 16]} style={{ marginTop: '20px' }}>
         <Col xs={24} sm={24} md={8} lg={6}>
           <Card title="报告配置">
             <Text strong>选择传感器数据源:</Text>
@@ -105,20 +106,20 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
               style={{ width: '100%', marginBottom: 16, marginTop: 8 }}
               placeholder="选择传感器数据源"
               options={agriculturalDataOptions}
-              onChange={value => {setSelectedDataSourceKey(value); setIsReportGenerated(false);}}
+              onChange={value => { setSelectedDataSourceKey(value); setIsReportGenerated(false); }}
               value={selectedDataSourceKey}
             />
             <Text strong>选择时间范围 (当前未使用):</Text>
-            <RangePicker 
+            <RangePicker
               style={{ width: '100%', marginBottom: 16, marginTop: 8 }}
-              onChange={(dates, dateStrings) => {setDateRange(dateStrings); setIsReportGenerated(false);}}
-              // value={...} // If you want to make RangePicker a controlled component
+              onChange={(dates, dateStrings) => { setDateRange(dateStrings); setIsReportGenerated(false); }}
+            // value={...} // If you want to make RangePicker a controlled component
             />
-            <Button 
-              type="primary" 
-              onClick={handleGenerateReport} 
+            <Button
+              type="primary"
+              onClick={handleGenerateReport}
               disabled={!selectedDataSourceKey}
-              style={{ width: '100%'}}
+              style={{ width: '100%' }}
             >
               生成报告
             </Button>
@@ -141,7 +142,7 @@ const AgriculturalReportsPage = ({ timeSeriesData, currentData }) => {
                 )}
               </div>
             ) : (
-              <Text>请选择传感器数据源并点击“生成报告”来查看汇总信息。</Text>
+              <Text>请选择传感器数据源并点击"生成报告"来查看汇总信息。</Text>
             )}
           </Card>
         </Col>

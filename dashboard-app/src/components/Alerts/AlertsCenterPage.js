@@ -84,7 +84,7 @@ const mockAlertsData = [
 ];
 
 const AlertsCenterPage = () => {
-  const [alertsData, setAlertsData] = useState(mockAlertsData);
+  const [alertsData] = useState(mockAlertsData);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
   const columns = [

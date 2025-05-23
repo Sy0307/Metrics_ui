@@ -30,7 +30,7 @@ const AlertSettingsModal = ({
         showIcon
         style={{ marginBottom: 16 }}
       />
-      
+
       <Form
         form={form}
         layout="vertical"
@@ -73,7 +73,7 @@ const AlertSettingsModal = ({
                             ))}
                           {/* Fallback for non-agricultural or general conditions */}
                           {agriculturalAlertConditions.filter(cond => cond.dataKey === panel.dataKey).length === 0 && (
-                             dataSources.some(ds => ds.key === panel.dataKey && ds.category !== '农田传感数据' && ds.category !== '遥感影像数据' && ds.category !== '气象数据') && (
+                            dataSources.some(ds => ds.key === panel.dataKey && ds.category !== '农田传感数据' && ds.category !== '遥感影像数据' && ds.category !== '气象数据') && (
                               <>
                                 <Option value="above_threshold">高于阈值</Option>
                                 <Option value="below_threshold">低于阈值</Option>
@@ -91,7 +91,7 @@ const AlertSettingsModal = ({
                         rules={[{ required: true, message: '请设置阈值' }]}
                       >
                         {/* Using InputNumber directly for more flexibility with agricultural data */}
-                        <InputNumber 
+                        <InputNumber
                           style={{ width: '100%' }}
                           min={0} // Consider making min/max dynamic based on dataKey
                           // max={100} // Max might not always be 100 for agricultural data
@@ -112,9 +112,9 @@ const AlertSettingsModal = ({
                       </Form.Item>
                     </Col>
                     <Col span={2}>
-                      <Button 
-                        type="text" 
-                        danger 
+                      <Button
+                        type="text"
+                        danger
                         icon={<DeleteOutlined />}
                         onClick={() => remove(field.name)}
                         style={{ marginTop: 30 }} // Adjust margin if needed due to new field
@@ -127,10 +127,10 @@ const AlertSettingsModal = ({
                 </div>
               ))}
               <Form.Item>
-                <Button 
-                  type="dashed" 
-                  onClick={() => add()} 
-                  block 
+                <Button
+                  type="dashed"
+                  onClick={() => add()}
+                  block
                   icon={<PlusOutlined />}
                 >
                   添加警报条件

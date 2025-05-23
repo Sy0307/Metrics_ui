@@ -1,12 +1,22 @@
 import React from 'react';
-import { Modal, Form, Input, Radio, InputNumber, Select, Button, Row, Col, Space, Tag } from 'antd';
-import { dataSources, chartTypes, refreshOptions } from '../../utils/constants';
+import { Modal, Form, Input, Select, Row, Col, Space, Tag, Radio, InputNumber } from 'antd';
+import { chartTypes, dataSources } from '../../utils/constants';
 
 const { Option } = Select;
 
-const AddPanelModal = ({ 
-  visible, 
-  form, 
+// 定义刷新间隔选项
+const refreshOptions = [
+  { value: 5000, label: '5秒' },
+  { value: 10000, label: '10秒' },
+  { value: 30000, label: '30秒' },
+  { value: 60000, label: '1分钟' },
+  { value: 300000, label: '5分钟' },
+  { value: 'manual', label: '手动刷新' }
+];
+
+const AddPanelModal = ({
+  visible,
+  form,
   confirmLoading,
   onCancel,
   onAdd,
@@ -14,7 +24,7 @@ const AddPanelModal = ({
 }) => {
   // 合并标准数据源和自定义数据源
   const allDataSources = [...dataSources];
-  
+
   // 添加自定义数据源到选项中
   if (customDataSources && customDataSources.length > 0) {
     customDataSources.forEach(source => {
@@ -24,7 +34,7 @@ const AddPanelModal = ({
       }
     });
   }
-  
+
   return (
     <Modal
       title="添加新面板"
@@ -59,7 +69,7 @@ const AddPanelModal = ({
               label="数据源"
               rules={[{ required: true, message: '请选择数据源' }]}
             >
-              <Select 
+              <Select
                 placeholder="请选择数据源"
                 showSearch
                 optionFilterProp="label"
@@ -76,7 +86,7 @@ const AddPanelModal = ({
                     </Option>
                   ))}
                 </Select.OptGroup>
-                
+
                 {/* 自定义数据源组 */}
                 {customDataSources && customDataSources.length > 0 && (
                   <Select.OptGroup label="自定义数据源">
@@ -96,7 +106,7 @@ const AddPanelModal = ({
             </Form.Item>
           </Col>
         </Row>
-        
+
         <Form.Item
           name="chartType"
           label="图表类型"
@@ -114,7 +124,7 @@ const AddPanelModal = ({
             </Space>
           </Radio.Group>
         </Form.Item>
-        
+
         <Row gutter={16}>
           <Col span={12}>
             <Form.Item
@@ -139,7 +149,7 @@ const AddPanelModal = ({
             </Form.Item>
           </Col>
         </Row>
-        
+
         <Form.Item
           name="refreshInterval"
           label="面板刷新间隔 (可单独设置)"

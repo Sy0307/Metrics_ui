@@ -1,7 +1,7 @@
 import React from 'react';
 import { Drawer, Form, Input, Radio, InputNumber, Select, Button, Alert, Row, Col, Space, Tag, Slider, Switch, Tabs, List, Badge, message } from 'antd';
-import { 
-  PlusOutlined, WarningOutlined, DatabaseOutlined
+import {
+  PlusOutlined, WarningOutlined, DatabaseOutlined, CloseOutlined
 } from '@ant-design/icons';
 import { refreshOptions, dataConnections } from '../../utils/constants';
 
@@ -17,7 +17,7 @@ export const DataConnectionsDrawer = ({
 }) => {
   const [form] = Form.useForm();
   const [customDataSourceForm] = Form.useForm();
-  
+
   const handleAddDataSource = () => {
     form.validateFields().then(values => {
       const newConnection = {
@@ -28,13 +28,13 @@ export const DataConnectionsDrawer = ({
         status: 'active',
         refreshRate: values.refreshRate || '1m'
       };
-      
+
       message.success(`已添加数据源: ${values.name}`);
       handleDataSourceChange(newConnection.id);
       form.resetFields();
     });
   };
-  
+
   // 添加自定义数据指标
   const handleAddCustomDataSource = () => {
     customDataSourceForm.validateFields().then(values => {
@@ -45,7 +45,7 @@ export const DataConnectionsDrawer = ({
         unit: values.unit,
         category: values.category
       };
-      
+
       if (onAddCustomDataSource) {
         onAddCustomDataSource(newDataSource);
         message.success(`已添加自定义数据指标: ${values.name}`);
@@ -53,7 +53,7 @@ export const DataConnectionsDrawer = ({
       }
     });
   };
-  
+
   return (
     <Drawer
       title="数据源管理"
@@ -69,7 +69,7 @@ export const DataConnectionsDrawer = ({
             renderItem={conn => (
               <List.Item
                 actions={[
-                  <Button 
+                  <Button
                     type={activeDataConnection === conn.id ? "primary" : "default"}
                     disabled={conn.status === 'inactive'}
                     onClick={() => handleDataSourceChange(conn.id)}
@@ -81,8 +81,8 @@ export const DataConnectionsDrawer = ({
               >
                 <List.Item.Meta
                   avatar={
-                    <Badge 
-                      status={conn.status === 'active' ? 'success' : 'default'} 
+                    <Badge
+                      status={conn.status === 'active' ? 'success' : 'default'}
                       style={{ marginTop: 8 }}
                     />
                   }
@@ -99,7 +99,7 @@ export const DataConnectionsDrawer = ({
           />
         </TabPane>
         <TabPane tab="添加数据源" key="2">
-          <Form 
+          <Form
             layout="vertical"
             form={form}
             initialValues={{
@@ -107,15 +107,15 @@ export const DataConnectionsDrawer = ({
               refreshRate: '1m'
             }}
           >
-            <Form.Item 
-              label="数据源名称" 
+            <Form.Item
+              label="数据源名称"
               name="name"
               rules={[{ required: true, message: '请输入数据源名称' }]}
             >
               <Input placeholder="输入一个描述性名称" />
             </Form.Item>
-            <Form.Item 
-              label="数据源类型" 
+            <Form.Item
+              label="数据源类型"
               name="type"
               rules={[{ required: true, message: '请选择数据源类型' }]}
             >
@@ -127,14 +127,14 @@ export const DataConnectionsDrawer = ({
                 <Option value="mock">模拟数据</Option>
               </Select>
             </Form.Item>
-            <Form.Item 
-              label="URL" 
+            <Form.Item
+              label="URL"
               name="url"
               rules={[{ required: true, message: '请输入URL' }]}
             >
               <Input placeholder="例如: http://prometheus:9090" />
             </Form.Item>
-            <Form.Item 
+            <Form.Item
               label="刷新间隔"
               name="refreshRate"
             >
@@ -160,7 +160,7 @@ export const DataConnectionsDrawer = ({
             showIcon
             style={{ marginBottom: 16 }}
           />
-          <Form 
+          <Form
             layout="vertical"
             form={customDataSourceForm}
             initialValues={{
@@ -168,8 +168,8 @@ export const DataConnectionsDrawer = ({
               unit: '%'
             }}
           >
-            <Form.Item 
-              label="指标标识符" 
+            <Form.Item
+              label="指标标识符"
               name="key"
               rules={[
                 { required: true, message: '请输入指标标识符' },
@@ -178,15 +178,15 @@ export const DataConnectionsDrawer = ({
             >
               <Input placeholder="例如: cpu_usage, memory_used" />
             </Form.Item>
-            <Form.Item 
-              label="指标名称" 
+            <Form.Item
+              label="指标名称"
               name="name"
               rules={[{ required: true, message: '请输入指标名称' }]}
             >
               <Input placeholder="例如: CPU使用率, 内存使用量" />
             </Form.Item>
-            <Form.Item 
-              label="指标类别" 
+            <Form.Item
+              label="指标类别"
               name="category"
               rules={[{ required: true, message: '请选择指标类别' }]}
             >
@@ -197,8 +197,8 @@ export const DataConnectionsDrawer = ({
                 <Option value="其他">其他</Option>
               </Select>
             </Form.Item>
-            <Form.Item 
-              label="单位" 
+            <Form.Item
+              label="单位"
               name="unit"
             >
               <Select>
