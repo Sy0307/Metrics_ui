@@ -9,12 +9,18 @@ import {
   fetchDataFromAPI
 } from '../../utils/helpers';
 import { initialPanels, initialLayout, dataConnections } from '../../utils/constants';
+import SettingsPage from '../Settings/SettingsPage';
+import DataSourcesPage from '../DataSources/DataSourcesPage';
+import AgriculturalReportsPage from '../Reports/AgriculturalReportsPage';
+import FarmTasksPage from '../Tasks/FarmTasksPage';
+import AlertsCenterPage from '../Alerts/AlertsCenterPage';
 
 const Dashboard = () => {
   // 基础状态
+  const [currentView, setCurrentView] = useState('dashboard'); // Step 2
   const [collapsed, setCollapsed] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const [refreshRate, setRefreshRate] = useState('1m');
+  const [refreshRate, setRefreshRate] = useState('1m'); // Default refresh rate
   const [showRefreshSettings, setShowRefreshSettings] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
@@ -462,9 +468,24 @@ const Dashboard = () => {
     setDataConnectionsDrawerVisible(!dataConnectionsDrawerVisible);
   };
 
+  // Step 3: Create handleViewChange
+  const handleViewChange = (viewKey) => {
+    setCurrentView(viewKey);
+    if (collapsed) { // Automatically close the sider on mobile/small screens after selection
+      // Check screen width or a specific condition if needed
+      // For simplicity, let's assume if it's collapsed, it might be a smaller screen.
+      // This behavior might need refinement based on actual UI/UX goals.
+      // setCollapsed(true); // This would keep it collapsed or close it if open.
+      // If the menu is always visible and only content changes, then collapsing might not be desired.
+      // Let's keep it simple: just change the view.
+    }
+  };
+
   return (
     <>
       <DashboardLayout
+        currentView={currentView} // Pass currentView for potential use in Layout (e.g. breadcrumbs)
+        handleViewChange={handleViewChange} // Pass the handler
         collapsed={collapsed}
         setCollapsed={setCollapsed}
         darkMode={darkMode}
@@ -496,7 +517,43 @@ const Dashboard = () => {
         removePanel={removePanel}
         clonePanel={clonePanel}
         toggleDataConnectionsDrawer={toggleDataConnectionsDrawer}
-      />
+      >
+        {/* Step 4: Conditional rendering based on currentView */}
+        {currentView === 'dashboard' && (
+          timeSeriesData.length === 0 && isLoading ? ( // Show loading spinner only for dashboard if data is not ready
+            <div style={{ textAlign: 'center', padding: '40px 0', background: darkMode ? '#141414' : '#fff', minHeight: 280 }}>
+              <Spin size="large" />
+              <div style={{ marginTop: 20 }}>
+                <Statistic value="数据加载中..." />
+              </div>
+            </div>
+          ) : (
+            <PanelGrid 
+              panels={panels}
+              layout={layout}
+              timeSeriesData={timeSeriesData}
+              currentData={currentData}
+              pieData={pieData}
+              isLoading={isLoading} // isLoading for individual panel refresh
+              darkMode={darkMode}
+              onLayoutChange={handleLayoutChange}
+              setPanelRefreshRate={(panelId, rate) => {
+                setPanels(panels.map(panel => 
+                  panel.id === panelId ? { ...panel, refreshRate: rate } : panel
+                ));
+              }}
+              onShowAlertSettings={showAlertSettings}
+              onRemovePanel={removePanel}
+              onClonePanel={clonePanel}
+            />
+          )
+        )}
+        {currentView === 'settings' && <SettingsPage />}
+        {currentView === 'data_sources' && <DataSourcesPage />}
+        {currentView === 'agricultural_reports' && <AgriculturalReportsPage />}
+        {currentView === 'farm_tasks' && <FarmTasksPage />}
+        {currentView === 'alerts_center' && <AlertsCenterPage />}
+      </DashboardLayout>
       
       <AddPanelModal
         visible={addPanelVisible}

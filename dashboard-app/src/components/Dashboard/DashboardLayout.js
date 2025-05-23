@@ -44,7 +44,11 @@ const DashboardLayout = ({
   showAlertSettings,
   onLayoutChange,
   removePanel,
-  clonePanel
+  clonePanel,
+  // Step 3: Receive handleViewChange and currentView
+  handleViewChange, 
+  currentView,
+  children // For Step 4 (rendering content)
 }) => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -58,40 +62,38 @@ const DashboardLayout = ({
         <Menu
           theme={darkMode ? 'dark' : 'light'}
           mode="inline"
-          defaultSelectedKeys={['1']}
+          selectedKeys={[currentView]} // Reflect current view
+          onClick={({ key }) => handleViewChange(key)} // Use Menu's own onClick
           items={[
             {
-              key: '1',
+              key: 'dashboard', // Changed key to match view identifier
               icon: <DashboardOutlined />,
               label: '仪表盘',
             },
             {
-              key: '2',
+              key: 'settings', // Changed key
               icon: <SettingOutlined />,
               label: '设置',
             },
             {
-              key: '3',
+              key: 'alerts_center', // Changed key
               icon: <BellOutlined />,
-              label: <Badge count={activeAlerts.length} size="small">警报</Badge>,
+              label: <Badge count={activeAlerts.length} size="small">警报中心</Badge>,
             },
             {
-              key: '4',
+              key: 'data_sources', // Changed key
               icon: <DatabaseOutlined />,
-              label: '数据源',
-              onClick: () => console.log('Navigate to Data Sources'), // Placeholder action
+              label: '数据源管理',
             },
             {
-              key: '5',
+              key: 'agricultural_reports', // Changed key
               icon: <FileTextOutlined />,
               label: '农业报告',
-              onClick: () => console.log('Navigate to Reports'), // Placeholder action
             },
             {
-              key: '6',
+              key: 'farm_tasks', // Changed key
               icon: <CarryOutOutlined />,
               label: '农事任务',
-              onClick: () => console.log('Navigate to Tasks'), // Placeholder action
             },
           ]}
         />
@@ -347,6 +349,8 @@ const DashboardLayout = ({
               onClonePanel={clonePanel}
             />
           )}
+          {/* Step 4: Render children in Content */}
+          {children}
         </Content>
         <Footer
           style={{
